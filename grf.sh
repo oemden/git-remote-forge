@@ -111,24 +111,24 @@ detect_technologies() {
     tech_map['.maven']='Maven'
     
     # Look for special files
-    if [ -f "$dir/Dockerfile" ]; then
+    if [ -f "$full_path/Dockerfile" ]; then
         extensions+=("Docker")
     fi
-    if [ -f "$dir/package.json" ]; then
+    if [ -f "$full_path/package.json" ]; then
         extensions+=("Node.js")
     fi
-    if [ -f "$dir/requirements.txt" ]; then
+    if [ -f "$full_path/requirements.txt" ]; then
         extensions+=("Python")
     fi
-    if [ -f "$dir/pom.xml" ]; then
+    if [ -f "$full_path/pom.xml" ]; then
         extensions+=("Java/Maven")
     fi
-    if [ -f "$dir/build.gradle" ]; then
+    if [ -f "$full_path/build.gradle" ]; then
         extensions+=("Java/Gradle")
     fi
     
     # Find all file extensions in the directory
-    find "$dir" -type f -print0 | while IFS= read -r -d '' file
+    find "$full_path" -type f -print0 | while IFS= read -r -d '' file
     do
         ext="${file##*.}"
         if [[ -n "$ext" && "$ext" != "$file" ]]; then
