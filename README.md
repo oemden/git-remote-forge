@@ -7,13 +7,14 @@ A tool to create and setup git projects locally and push them remotely on GitLab
 - SSH key setup and configured for GitLab access
 - GitLab namespace (username or group name where the repository will be created)
 
-## Features
+## Features (v0.7)
 - Dry-run mode (default) to preview all operations before execution
 - Force mode (`-f`) to skip preview and confirmation
 - Single project creation with consistent local and remote naming
 - Git user information automatically retrieved from git config
 - Optional technology specification or auto-detection
 - Custom branch creation
+- Run the script from anywhere now
 
 ## Branch Structure
 GRF creates three default branches:
@@ -49,6 +50,7 @@ You can specify a different branch to checkout using the `-B` option:
 ### Clone the repository
 
 `git clone git@github.com:username/git-remote-forge.git`
+
 `cd git-remote-forge`
 
 ### Make the script executable
