@@ -15,6 +15,34 @@ A tool to create and setup git projects locally and push them remotely on GitLab
 - Optional technology specification or auto-detection
 - Custom branch creation
 
+## Branch Structure
+GRF creates three default branches:
+
+- `main`: Primary branch for stable code
+- `production`: Production-ready releases
+- `develop`: Active development branch
+
+The script automatically:
+
+1. Creates all three default branches
+2. Initializes with README on main branch
+3. Propagates initial setup to all branches
+4. Checks out to develop branch by default
+
+
+You can specify a different branch to checkout using the `-B` option:
+
+`grf -d project_name -B production  # Creates all branches, checks out to production`
+
+- Default working branch is `develop` unless specified via `-B`
+
+
+### Branch Management
+
+- All changes start on `main` branch
+- Changes are propagated to `production` and `develop`
+
+
 ## Installation
 
 
@@ -40,17 +68,19 @@ or
 
 ##  Usage
 
-### Preview mode (default)
-`grf -d project_name -b feature_branch -t "python,django"`
+### Preview mode (default):
 
-### Force mode (no preview)
-`grf -d project_name -b feature_branch -f`
+- `grf -d project_name -b feature_branch -t "python,django"`
+
+### Force mode (no preview):
+
+- `grf -d project_name -b feature_branch -f`
 
 
 ## Options
 
 - `-d` : Directory/Project name
-- `-b` : Branch name (default: main)
+- `-B` : If set, Branch to checkout after creation (default: `develop`)
 - `-t` : Technologies (optional, comma-separated)
 - `-f` : Force mode (skip dry-run and confirmation)
 - `-h` : Display help message
