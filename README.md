@@ -17,6 +17,7 @@ A tool to create and setup git projects locally and push them remotely on GitLab
 
 ## Installation
 
+
 ### Clone the repository
 
 `git clone git@github.com:username/git-remote-forge.git`
@@ -25,7 +26,7 @@ A tool to create and setup git projects locally and push them remotely on GitLab
 ### Make the script executable
 `chmod +x grf.sh`
 
-### Optional:
+### Optional: 
 
 **Add to `/usr/local/bin/`**
 
@@ -37,15 +38,16 @@ or
 
 `sudo ln -s $(pwd)/grf /usr/local/bin/grf`
 
-## Usage
+##  Usage
 
-# Preview mode (default)
+### Preview mode (default)
 `grf -d project_name -b feature_branch -t "python,django"`
 
-## Force mode (no preview)
+### Force mode (no preview)
 `grf -d project_name -b feature_branch -f`
 
-### Options
+
+## Options
 
 - `-d` : Directory/Project name
 - `-b` : Branch name (default: main)
@@ -66,3 +68,4 @@ When run without the `-f` flag, the script will:
 
 2. Prompt for confirmation before executing
 3. Only proceed if confirmed
+
