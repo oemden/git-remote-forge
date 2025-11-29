@@ -45,7 +45,7 @@
 - [x] Add provider routing (setup_provider function)
 - [x] Add handle_gitea_setup() adapter
 
-### Phase 2: Existing Directory Support (v0.9.0) ✅ COMPLETE
+### Phase 2: Existing Directory Support (v0.9.0-0.9.1) ✅ COMPLETE
 - [x] `local_directory()` - manage dir creation/detection
 - [x] `manage_git()` - detect or initialize git repos
 - [x] `has_branches()` - check if repo has branches
@@ -58,16 +58,28 @@
 - [x] Safe approach: detect state, never destroy
 - [x] Scenario-based remote messaging (multiple/single/none)
 - [x] Show remote URLs in conflict messages
-- [x] Tested: empty dir, empty .git, existing repo with branches
+- [x] Support absolute paths in `-d` parameter (v0.9.1)
+- [x] Better formatted path output (v0.9.1)
+- [x] Display full path in output (v0.9.1)
+- [x] Detect git push failures, exit with error code (v0.9.1)
+- [x] Early abort on first push failure (v0.9.1)
 
 ---
 
 ## BACKLOG - Phase 3+
 
+### Testing & CI/CD
+- [ ] Create test automation script covering core scenarios
+- [ ] Test scenarios: new repo, absolute path, relative path, existing .git, existing branches, remote conflicts, push failures, force mode
+- [ ] Prepare CI/CD pipeline for develop→main merges
+- [ ] Add GitHub Actions or GitLab CI config
+- [ ] Automated tests on: parameter validation, path handling, git operations, provider routing
+- [ ] Mock provider responses for testing without GitLab account
+- [ ] Coverage: success paths and error paths
+
 ### Setup Validation & Error Handling
-- [x] Detect git push failures, exit with error code
 - [ ] Validate remote created before success message
-- [ ] Check remote repo exists on provider before push
+- [ ] Check remote repo exists on provider before push (Phase 3)
 - [ ] Provide clear error messages with troubleshooting steps
 - [ ] Add `-v/--verbose` flag for detailed output
 - [ ] Add `--dry-run` option (parse only, no execution)
