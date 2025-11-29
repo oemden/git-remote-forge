@@ -74,41 +74,45 @@ parse_arguments() {
     done
 }
 
-# Function to detect technologies based on file extensions
+# Helper: Map file extension to technology (bash 3.x compatible)
+get_tech_from_extension() {
+    local ext="$1"
+    case "$ext" in
+        .py) echo "Python" ;;
+        .js) echo "JavaScript" ;;
+        .ts) echo "TypeScript" ;;
+        .html) echo "HTML" ;;
+        .css) echo "CSS" ;;
+        .java) echo "Java" ;;
+        .cpp) echo "C++" ;;
+        .c) echo "C" ;;
+        .go) echo "Go" ;;
+        .rb) echo "Ruby" ;;
+        .php) echo "PHP" ;;
+        .rs) echo "Rust" ;;
+        .swift) echo "Swift" ;;
+        .kt) echo "Kotlin" ;;
+        .scala) echo "Scala" ;;
+        .sh) echo "Shell" ;;
+        .yml|.yaml) echo "YAML" ;;
+        .json) echo "JSON" ;;
+        .xml) echo "XML" ;;
+        .md) echo "Markdown" ;;
+        .sql) echo "SQL" ;;
+        .dockerfile) echo "Docker" ;;
+        .tf) echo "Terraform" ;;
+        .gradle) echo "Gradle" ;;
+        .maven) echo "Maven" ;;
+    esac
+}
+
+# TODO: Function - Init existing directory with file detection
+# Currently unused; will be called during existing repo initialization
 detect_technologies() {
     local dir="$1"
     local full_path=$(realpath "$dir")
     local tech_list=""
     local extensions=()
-    
-    # Map of file extensions to technologies
-    declare -A tech_map
-    tech_map['.py']=Python
-    tech_map['.js']='JavaScript'
-    tech_map['.ts']='TypeScript'
-    tech_map['.html']='HTML'
-    tech_map['.css']='CSS'
-    tech_map['.java']='Java'
-    tech_map['.cpp']='C++'
-    tech_map['.c']='C'
-    tech_map['.go']='Go'
-    tech_map['.rb']='Ruby'
-    tech_map['.php']='PHP'
-    tech_map['.rs']='Rust'
-    tech_map['.swift']='Swift'
-    tech_map['.kt']='Kotlin'
-    tech_map['.scala']='Scala'
-    tech_map['.sh']='Shell'
-    tech_map['.yml']='YAML'
-    tech_map['.yaml']='YAML'
-    tech_map['.json']='JSON'
-    tech_map['.xml']='XML'
-    tech_map['.md']='Markdown'
-    tech_map['.sql']='SQL'
-    tech_map['.dockerfile']='Docker'
-    tech_map['.tf']='Terraform'
-    tech_map['.gradle']='Gradle'
-    tech_map['.maven']='Maven'
     
     # Look for special files
     if [ -f "$full_path/Dockerfile" ]; then
@@ -132,9 +136,10 @@ detect_technologies() {
     do
         ext="${file##*.}"
         if [[ -n "$ext" && "$ext" != "$file" ]]; then
-            ext=".${ext,,}"  # Convert to lowercase
-            if [[ -n "${tech_map[$ext]}" ]]; then
-                extensions+=("${tech_map[$ext]}")
+            ext=".$(echo "$ext" | tr '[:upper:]' '[:lower:]')"  # Convert to lowercase (bash 3.x compatible)
+            tech=$(get_tech_from_extension "$ext")
+            if [[ -n "$tech" ]]; then
+                extensions+=("$tech")
             fi
         fi
     done
@@ -174,6 +179,33 @@ get_git_user_info() {
     fi
     
     echo "$name <$email>"
+}
+
+# Provider Adapter: GitLab Setup
+handle_gitlab_setup() {
+    local target=$1
+    local gitlab_domain=${2:-"gitlab.com"}  # Default gitlab.com, accept custom domain
+    
+    # Validate target
+    if [[ -z "$target" ]]; then
+        read -p "Enter your GitLab namespace: " target
+        while [[ -z "$target" ]]; do
+            echo "GitLab namespace cannot be empty!"
+            read -p "Enter your GitLab namespace: " target
+        done
+    fi
+    
+    # Export StandardConfig variables
+    PROVIDER_NAME="gitlab"
+    TARGET="$target"
+    GITLAB_DOMAIN="$gitlab_domain"
+    REMOTE_URL="git@${GITLAB_DOMAIN}:${TARGET}/${REPO_NAME}.git"
+    REMOTE_PROTOCOL="ssh"
+    API_ENDPOINT="https://${GITLAB_DOMAIN}/api/v4"
+    
+    AUTH_VALID=true
+    TARGET_EXISTS=true
+    REPO_EXISTS=false
 }
 
 # Function to preview operations
@@ -271,11 +303,13 @@ EOL
 
 # Function to push to GitLab
 push_to_gitlab() {
-    local namespace="$1"
-    local checkout_branch="$2"
+    # local namespace="$1"
+    # local checkout_branch="$2"
+    local checkout_branch="$1"
     
     # Setup remote and push main
-    local remote_url="${GITLAB_BASE_URL}${namespace}/${DIRECTORY_NAME}.git"
+    # local remote_url="${GITLAB_BASE_URL}${namespace}/${DIRECTORY_NAME}.git"
+    local remote_url="$REMOTE_URL"
     git remote add origin "$remote_url"
     git push --set-upstream origin main
     
@@ -337,9 +371,10 @@ main() {
     # Get git user info
     contributor=$(get_git_user_info)
     
-    # Get GitLab namespace
-    gitlab_ns=$(get_gitlab_namespace)
-    
+    # Setup provider (GitLab only for now)
+    REPO_NAME="$DIRECTORY_NAME"
+    handle_gitlab_setup ""  "" # Empty string triggers interactive mode - For now, defaults to gitlab.com
+
     echo -e "\nStarting repository setup..."
     
     # Preview operations if not in force mode
