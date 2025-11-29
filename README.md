@@ -7,15 +7,14 @@ A tool to create and setup git projects locally and push them remotely on GitLab
 - SSH key setup and configured for GitLab access
 - GitLab namespace (username or group name where the repository will be created)
 
-## Features (v0.7.1)
-- Dry-run mode (default) to preview all operations before execution
-- Force mode (`-f`) to skip preview and confirmation
-- Single project creation with consistent local and remote naming
-- Git user information automatically retrieved from git config
-- Optional technology specification or auto-detection
-- Custom branch creation
-- Run the script from anywhere
-- Provider abstraction architecture (ready for multi-platform support)
+## Features (v0.8)
+- Parameter-driven configuration: `-n` namespace, `-R` provider, `-T` technologies
+- Auto-detect technologies with `-t` flag (existing directory mode)
+- Multi-provider architecture (GitLab, GitHub, Bitbucket, Gitea ready)
+- Self-hosted provider support via `-S` option
+- Dry-run mode (default) with preview and confirmation
+- Force mode (`-f`) for automation
+- Provider-agnostic functions (StandardConfig abstraction)
 - Bash 3.x compatible (macOS compatible)
 
 ## Branch Structure

@@ -2,6 +2,37 @@
 
 All notable changes to GRF (git-remote-forge) are documented here.
 
+## [0.8] - 2025-11-29
+
+### Added
+- `-n, --namespace` parameter for provider target (replaces interactive prompt)
+- `-t` flag for auto-detect technologies (existing directory mode only)
+- `-T, --tech` parameter for user-provided technologies
+- `-R, --repo` parameter for provider selection (gitlab|github|bitbucket|gitea)
+- `-S, --self-hosted` parameter for custom domain support (self-hosted instances)
+- `-p, --path` parameter for existing directory mode
+- `setup_provider()` router function for provider-agnostic setup
+- `handle_gitea_setup()` adapter for Gitea support
+- Gitea provider support (functional parity with GitLab)
+- Multi-provider architecture documentation
+
+### Changed
+- Renamed `-t` (old target param) to `-n` (namespace) for clarity
+- Removed `-e` flag; auto-detect existing .git directory instead
+- Renamed `push_to_gitlab()` → `push_to_remote()` (provider-agnostic)
+- Updated help text with usage modes and examples
+- Version bumped to 0.8
+
+### Fixed
+- Parameter handling for multi-provider setup
+- Technology output in README now respects `-T` parameter
+
+### Notes
+- Architecture ready for GitHub and Bitbucket provider implementation
+- Next phase: Existing directory initialization logic
+
+---
+
 ## [0.7.1] - 2025-11-29
 
 ### Added

@@ -7,7 +7,7 @@
 #   - production: for production releases
 #   - develop: active development branch
 
-Version="0.7.1"
+Version="0.8"
 
 # Prerequisites:
 # - Git configured locally (user.name and user.email)
@@ -25,6 +25,10 @@ GITLAB_BASE_URL="git@gitlab.com:"
 DIRECTORY_NAME=""
 TECHNOLOGIES=""
 FORCE_MODE=false
+TARGET=""
+PROVIDER="gitlab" # Default to gitlab for now
+CHECKOUT_BRANCH="develop"
+SELF_HOSTED_URL=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -37,11 +41,21 @@ NC='\033[0m' # No Color
 usage() {
     echo "Usage: $0 [OPTIONS]"
     echo "Options:"
-    echo "  -d    Directory/Project name (required)"
+    echo "  -d    Directory/Project name (required for new repo)"
+    echo "  -n    Namespace/username (target on provider)"
+    echo "  -R    Provider: gitlab|github|bitbucket|gitea (default: gitlab)"
+    echo "  -S    Self-hosted URL (optional, for self-hosted providers)"
+    echo "  -t    Auto-detect technologies (existing directory mode)"
+    echo "  -T    Technologies (user-provided, comma-separated, optional)"
     echo "  -B    Branch to checkout after creation (default: develop)"
-    echo "  -t    Technologies (optional, comma-separated)"
+    echo "  -p    Path to local directory (optional, for existing directory mode)"
     echo "  -f    Force mode (skip dry-run and confirmation)"
     echo "  -h    Display this help message"
+    echo
+    echo "Modes:"
+    echo "  New Repository:       grf -d myproject -n myuser -T 'python,js'"
+    echo "  Existing Directory:   grf -n myuser -t (auto-detect) or -T 'tech'"
+    echo "  Existing Directory:   grf -p /path/to/dir -n myuser -t"
     echo
     echo "Default branches created: main, production, develop"
     echo "Default checkout: develop (unless -B specified)"
@@ -50,7 +64,7 @@ usage() {
 
 # Parse command line arguments
 parse_arguments() {
-    while getopts "d:B:t:fh" opt; do
+    while getopts "d:t:T:R:B:e:p:fh" opt; do
         case ${opt} in
             d )
                 DIRECTORY_NAME=$OPTARG
@@ -58,11 +72,20 @@ parse_arguments() {
             B )
                 CHECKOUT_BRANCH=$OPTARG
                 ;;
-            t )
-                TECHNOLOGIES=$OPTARG
-                ;;
             f )
                 FORCE_MODE=true
+                ;;
+            t )
+                TARGET=$OPTARG
+                ;;
+            T )
+                TECHNOLOGIES=$OPTARG
+                ;;
+            R )
+                PROVIDER=$OPTARG
+                ;;
+            S )
+                SELF_HOSTED_URL=$OPTARG
                 ;;
             h )
                 usage
@@ -208,13 +231,36 @@ handle_gitlab_setup() {
     REPO_EXISTS=false
 }
 
+handle_github_setup() {
+    local target=$1
+    local github_domain=${2:-"github.com"}  # or whatever default
+    
+    echo
+    # TODO: implement handle_github_setup
+}
+
+handle_bitbucket_setup() {
+    local target=$1
+    local bitbucket_domain=${2:-"bitbucket.org"}  # or whatever default
+    
+    echo
+    # TODO: implement handle_bitbucket_setup
+}
+
+handle_gitea_setup() {
+    local target=$1
+    local gitea_domain=${2:-"gitea.io"}  # or whatever default
+    
+    echo
+    # TODO: implement handle_gitea_setup
+}
+
 # Function to preview operations
 preview_operations() {
     local dir_name="$1"
     local contributor="$2"
     local technologies="$3"
     local checkout_branch="$4"
-    local namespace="$5"
 
     echo -e "\n${BLUE}Preview of Operations:${NC}"
     echo -e "${YELLOW}====================${NC}"
@@ -231,7 +277,7 @@ preview_operations() {
     # Remote operations
     echo -e "\n${GREEN}2. Remote Repository Setup:${NC}"
     echo -e "   • Configure remote origin:"
-    echo -e "     ${BLUE}${GITLAB_BASE_URL}${namespace}/${dir_name}.git${NC}"
+    echo -e "     ${BLUE}${REMOTE_URL}${NC}"
 
     # Branch operations
     echo -e "\n${GREEN}3. Branch Operations:${NC}"
@@ -301,10 +347,8 @@ EOL
     git commit -m "Initial commit: Add README.md"
 }
 
-# Function to push to GitLab
-push_to_gitlab() {
-    # local namespace="$1"
-    # local checkout_branch="$2"
+# Function to push to remote (provider-agnostic)
+push_to_remote() {
     local checkout_branch="$1"
     
     # Setup remote and push main
@@ -357,6 +401,36 @@ push_to_gitlab() {
     fi
 }
 
+# Function to setup git providers (Gitlab, GitHub, Bitbucket, Gitea)
+setup_provider() {
+    local provider=$1
+    local target=$2
+    local self_hosted_url=$3
+    
+    case "$provider" in
+        gitlab)
+            handle_gitlab_setup "$target" "$self_hosted_url"
+            ;;
+        github)
+            # TODO: implement handle_github_setup
+            echo "Error: GitHub support coming soon"
+            exit 1
+            ;;
+        bitbucket)
+            # TODO: implement handle_bitbucket_setup
+            echo "Error: Bitbucket support coming soon"
+            exit 1
+            ;;
+        gitea)
+            handle_gitea_setup "$target" "$self_hosted_url"
+            ;;
+        *)
+            echo "Error: Unknown provider: $provider"
+            exit 1
+            ;;
+    esac
+}
+
 # Main script
 main() {
     echo "GitLab Repository Setup Script v${Version}"
@@ -371,22 +445,24 @@ main() {
     # Get git user info
     contributor=$(get_git_user_info)
     
-    # Setup provider (GitLab only for now)
+    # Set repository name
     REPO_NAME="$DIRECTORY_NAME"
-    handle_gitlab_setup ""  "" # Empty string triggers interactive mode - For now, defaults to gitlab.com
+
+   # Setup provider with self-hosted URL if provided
+    setup_provider "$PROVIDER" "$TARGET" "$SELF_HOSTED_URL"
 
     echo -e "\nStarting repository setup..."
-    
+
     # Preview operations if not in force mode
     if [ "$FORCE_MODE" = false ]; then
-        preview_operations "$DIRECTORY_NAME" "$contributor" "$TECHNOLOGIES" "$CHECKOUT_BRANCH" "$gitlab_ns"
+        preview_operations "$DIRECTORY_NAME" "$contributor" "$TECHNOLOGIES" "$CHECKOUT_BRANCH"
     fi
     
     # Create local repository
     create_local_repo "$DIRECTORY_NAME" "$contributor" "$TECHNOLOGIES"
     
-    # Push to GitLab
-    push_to_gitlab "$gitlab_ns" "$CHECKOUT_BRANCH"
+    # Push to remote
+    push_to_remote "$CHECKOUT_BRANCH"
     
     echo -e "\nRepository setup completed successfully!"
 }

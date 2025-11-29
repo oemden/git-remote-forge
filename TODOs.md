@@ -3,12 +3,13 @@
 ### Parameter Strategy
 ```
 -d, --dir          Project directory/name (required for new repo)
--t, --target       Namespace/username (GitLab groups, GitHub users, etc.)
--R, --repo         Provider: gitlab|github|bitbucket (default: gitlab)
--T, --tech         Technologies (comma-separated, optional)
+-n, --namespace    Namespace/username (target on provider)
+-R, --repo         Provider: gitlab|github|bitbucket|gitea (default: gitlab)
+-S, --self-hosted  Self-hosted URL (optional, for self-hosted instances)
+-t                 Auto-detect technologies (existing directory mode only)
+-T, --tech         Technologies (user-provided, comma-separated, optional)
 -B, --branch       Checkout branch after creation (default: develop)
--e, --existing     Existing repo mode (detect or explicit flag)
--p, --path         Path to repo (optional, for existing repo outside cwd)
+-p, --path         Path to local directory (existing directory mode)
 -f, --force        Skip preview and confirmation
 -h, --help         Display help message
 ```
@@ -16,7 +17,7 @@
 ### Configuration
 - Location: `~/.config/.gitremoteforge/.grfconfig`
 - Priority: Parameters override config file
-- Content: default target, default provider, default technologies, default branch
+- Content: default namespace, default provider, default technologies, default branch
 - No `-c` parameter needed; config is implicit in standard location
 
 ---
@@ -31,36 +32,47 @@
 - [x] Fix bash 3.x compatibility (declare -A → case statements)
 - [x] Update script version to 0.7.1
 
+### Phase 1: Target & Provider Support (v0.8)
+- [x] Add `-n, --namespace` parameter (replaces interactive prompt)
+- [x] Add `-R, --repo` parameter (gitlab|github|bitbucket|gitea)
+- [x] Rename `-t` to `-n` for namespace, use `-t` for auto-detect tech
+- [x] Add `-t` auto-detect flag (existing directory mode)
+- [x] Add `-T, --tech` parameter for user technologies
+- [x] Add `-S, --self-hosted` parameter for custom domains
+- [x] Update parse_arguments() with new options
+- [x] Update usage() documentation with modes/examples
+- [x] Pass parameters to handle_gitlab_setup()
+- [x] Add provider routing (setup_provider function)
+- [x] Add handle_gitea_setup() adapter
+
 ---
 
-## CURRENT WORK: Phase 1 - Target & Provider Support
-**Branch:** `feature/target-and-provider`
+## CURRENT WORK: Phase 2 - Existing Directory Support
+**Branch:** `feature/existing-directory-init`
 
-### Target & Provider Parameters
-- [ ] Add `-t, --target` parameter (namespace/username)
-- [ ] Add `-R, --repo` parameter (gitlab|github|bitbucket)
-- [ ] Rename `-t` to `-T, --tech` for technologies
-- [ ] Update parse_arguments() with new options
-- [ ] Update usage() documentation
-- [ ] Pass parameters to handle_gitlab_setup()
-- [ ] Add provider routing (case statement for handle_<provider>_setup)
-
-### Existing Repository Support
-- [ ] Add `-e, --existing` flag for existing repo mode
-- [ ] Add `-p, --path` parameter (optional path to repo)
+### Existing Directory/Repository Support
+- [ ] Remove hardcoded `-d` requirement (optional for existing mode)
 - [ ] Auto-detect `.git` directory in current location
-- [ ] Skip `mkdir` and `git init` in existing mode
-- [ ] Validate existing remote or add new remote
-- [ ] Handle existing branches (don't recreate if present)
+- [ ] Auto-detect if `-p` path contains existing git repo
+- [ ] Skip `mkdir` and `git init` if .git exists
+- [ ] Handle existing remote configuration
+- [ ] Handle existing branches (don't recreate main/production/develop)
+- [ ] Initialize new repos in existing directory with files
+- [ ] Call `detect_technologies()` when `-t` flag provided
+- [ ] Update README with detected/user-provided technologies
+- [ ] Support both modes: `grf -n user -t` and `grf -p /path -n user -t`
 
-### Documentation
-- [ ] Update README.md with new parameters
-- [ ] Update usage examples
-- [ ] Document both new-repo and existing-repo workflows
+### Documentation & Tests
+- [ ] Update README with existing directory mode examples
+- [ ] Test new repo creation (ensure backward compatible)
+- [ ] Test existing directory without .git
+- [ ] Test existing git repo (add remote only)
+- [ ] Test `-t` auto-detect functionality
+- [ ] Test technology output in README
 
 ---
 
-## Phase 2: Foundation & Configuration
+## Phase 3: Foundation & Configuration
 
 ### Config File System
 - [ ] Create `.grfconfig` template in `~/.config/.gitremoteforge/`
@@ -83,7 +95,7 @@
 
 ---
 
-## Phase 3: Enhancement Features
+## Phase 4: Enhancement Features
 
 ### .gitignore Management
 - [ ] Generate .gitignore based on detected technologies
@@ -105,7 +117,7 @@
 
 ---
 
-## Phase 4: Advanced Features
+## Phase 5: Advanced Features
 
 ### Batch & Template Operations
 - [ ] Batch mode: create multiple repos from list
