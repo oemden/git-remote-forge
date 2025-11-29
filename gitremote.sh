@@ -7,7 +7,7 @@
 #   - production: for production releases
 #   - develop: active development branch
 
-Version="0.8"
+Version="0.9.1"
 
 # Prerequisites:
 # - Git configured locally (user.name and user.email)
@@ -23,10 +23,14 @@ GITLAB_BASE_URL="git@gitlab.com:"
 
 # Default values
 DIRECTORY_NAME=""
+LOCAL_TARGET=""
 TECHNOLOGIES=""
+AUTO_DETECT_TECH=false
+DIRECTORY_PATH=""
+IS_EXISTING_REPO=false
 FORCE_MODE=false
 TARGET=""
-PROVIDER="gitlab" # Default to gitlab for now
+PROVIDER="gitlab"
 CHECKOUT_BRANCH="develop"
 SELF_HOSTED_URL=""
 
@@ -64,19 +68,16 @@ usage() {
 
 # Parse command line arguments
 parse_arguments() {
-    while getopts "d:t:T:R:B:e:p:fh" opt; do
+    while getopts "d:n:t:T:R:B:S:p:fh" opt; do
         case ${opt} in
             d )
                 DIRECTORY_NAME=$OPTARG
                 ;;
-            B )
-                CHECKOUT_BRANCH=$OPTARG
-                ;;
-            f )
-                FORCE_MODE=true
+            n )
+                TARGET=$OPTARG
                 ;;
             t )
-                TARGET=$OPTARG
+                AUTO_DETECT_TECH=true
                 ;;
             T )
                 TECHNOLOGIES=$OPTARG
@@ -84,8 +85,17 @@ parse_arguments() {
             R )
                 PROVIDER=$OPTARG
                 ;;
+            B )
+                CHECKOUT_BRANCH=$OPTARG
+                ;;
             S )
                 SELF_HOSTED_URL=$OPTARG
+                ;;
+            p )
+                DIRECTORY_PATH=$OPTARG
+                ;;
+            f )
+                FORCE_MODE=true
                 ;;
             h )
                 usage
@@ -310,25 +320,20 @@ preview_operations() {
     fi
 }
 
-# Function to create local repository
+# Function to create local repository structure (README, initial commit)
 create_local_repo() {
-    local dir_name="$1"
-    local full_path="${BASE_DIR}/${dir_name}"
+    local target_path="$1"
+    local contributor="$2"
+    local technologies="$3"
     
-    if [ -d "$full_path" ]; then
-        echo "Error: Directory $full_path already exists"
-        exit 1
-    fi
-    
-    mkdir -p "$full_path" && cd "$full_path"
-    git init
+    cd "$target_path"
     
     # Create README.md with dynamic content
     cat > README.md << EOL
-# $dir_name
+# $DIRECTORY_NAME
 
 ## Project Overview
-This repository contains the source code for $dir_name.
+This repository contains the source code for $DIRECTORY_NAME.
 
 ## Main Contributor
 $contributor
@@ -350,55 +355,55 @@ EOL
 # Function to push to remote (provider-agnostic)
 push_to_remote() {
     local checkout_branch="$1"
+    local push_success=true
     
-    # Setup remote and push main
-    # local remote_url="${GITLAB_BASE_URL}${namespace}/${DIRECTORY_NAME}.git"
     local remote_url="$REMOTE_URL"
-    git remote add origin "$remote_url"
-    git push --set-upstream origin main
     
-    # Create and push production
-    git checkout -b production
-    git push --set-upstream origin production
-    
-    # Create and push develop
-    git checkout -b develop
-    git push --set-upstream origin develop
-    
-    # Checkout based on -B flag or default to develop
-    if [ ! -z "$checkout_branch" ]; then
-        git checkout "$checkout_branch"
-    else
-        git checkout develop
+    # Add remote if not exists
+    if ! git remote | grep -q "^origin$"; then
+        git remote add origin "$remote_url"
     fi
     
-    # Detect and update technologies if not specified
-    if [ -z "$TECHNOLOGIES" ]; then
-        local detected_tech=$(detect_technologies ".")
-        if [ ! -z "$detected_tech" ]; then
-            git checkout main
-            echo -e "\n## Technologies\n$detected_tech" >> README.md
-            git add README.md
-            git commit -m "Update README: Add detected technologies"
-            git push origin main
-            
-            # Update production and develop
-            git checkout production
-            git merge main
-            git push origin production
-            
-            git checkout develop
-            git merge main
-            git push origin develop
-            
-            # Return to previous branch
-            if [ ! -z "$checkout_branch" ]; then
-                git checkout "$checkout_branch"
-            else
-                git checkout develop
-            fi
+    # If existing repo with branches, push as-is
+    if [ "$IS_EXISTING_REPO" = true ]; then
+        echo -e "${BLUE}Pushing existing branches to remote...${NC}"
+        if ! git push --all --set-upstream origin; then
+            echo -e "${RED}✗ Push to remote failed${NC}"
+            push_success=false
+        else
+            echo -e "${GREEN}✓ Pushed successfully${NC}"
+        fi
+    else
+        # New repo: create and push standard branches
+        echo -e "${BLUE}Creating and pushing standard branches...${NC}"
+        
+        if ! git push --set-upstream origin main; then
+            echo -e "${RED}✗ Failed to push main branch - aborting${NC}"
+            return 1
+        fi
+        
+        git checkout -b production
+        if ! git push --set-upstream origin production; then
+            echo -e "${RED}✗ Failed to push production branch - aborting${NC}"
+            return 1
+        fi
+        
+        git checkout -b develop
+        if ! git push --set-upstream origin develop; then
+            echo -e "${RED}✗ Failed to push develop branch - aborting${NC}"
+            return 1
         fi
     fi
+    
+    # Checkout requested branch or default
+    if [ ! -z "$checkout_branch" ]; then
+        git checkout "$checkout_branch" 2>/dev/null || echo -e "${YELLOW}Branch $checkout_branch not found${NC}"
+    else
+        git checkout develop 2>/dev/null || echo -e "${YELLOW}develop branch not found${NC}"
+    fi
+    
+    # Return status
+    [ "$push_success" = true ]
 }
 
 # Function to setup git providers (Gitlab, GitHub, Bitbucket, Gitea)
@@ -431,9 +436,191 @@ setup_provider() {
     esac
 }
 
+# Phase 2: Existing Repository Detection Functions
+
+# Detect if directory contains .git
+detect_existing_repo() {
+    local path="$1"
+    if [ -d "$path/.git" ]; then
+        return 0  # Repo exists
+    else
+        return 1  # New repo
+    fi
+}
+
+# Check if repo has any branches
+has_branches() {
+    local path="$1"
+    cd "$path"
+    local branch_count=$(git branch | wc -l)
+    if [ "$branch_count" -gt 0 ]; then
+        return 0  # Has branches
+    else
+        return 1  # No branches
+    fi
+}
+
+# Get local branches
+get_local_branches() {
+    local path="$1"
+    cd "$path"
+    git branch | sed 's/^\* //' | sed 's/^ //'
+}
+
+# Detect if repo uses master or main
+detect_master_vs_main() {
+    local path="$1"
+    cd "$path"
+    
+    if git rev-parse --verify main >/dev/null 2>&1; then
+        echo "main"
+    elif git rev-parse --verify master >/dev/null 2>&1; then
+        echo "master"
+    else
+        echo "none"
+    fi
+}
+
+# Check if remote exists (focus on origin, warn if multiple remotes)
+validate_remote_exists() {
+    local path="$1"
+    cd "$path"
+    
+    local remote_count=$(git remote | wc -l)
+    
+    if [ "$remote_count" -gt 1 ]; then
+        echo -e "${YELLOW}⚠ Multiple remotes detected:${NC}"
+        git remote -v
+        echo -e "${YELLOW}Note: git-remote-forge currently focuses on 'origin' only.${NC}"
+        echo -e "${YELLOW}TODO: Multi-remote support (backlog)${NC}"
+        return 0  # Multiple remotes exist
+    elif [ "$remote_count" -eq 1 ]; then
+        return 0  # Single remote (origin) exists
+    else
+        return 1  # No remotes
+    fi
+}
+
+# Prompt user for branch strategy (Y/N/A)
+prompt_branch_strategy() {
+    local local_branches="$1"
+    local existing_primary="$2"
+    
+    echo -e "\n${YELLOW}Existing Repository Detected${NC}"
+    echo -e "Local branches: ${BLUE}$local_branches${NC}"
+    echo -e "Primary branch: ${BLUE}$existing_primary${NC}"
+    echo
+    echo -e "${YELLOW}Branch Strategy:${NC}"
+    echo "  Y - Keep existing branches only (no modifications)"
+    echo "  N - Abort (review repository manually)"
+    echo "  A - Keep existing + add missing standard branches (main/production/develop)"
+    echo
+    
+    read -p "Choose strategy [Y/N/A]: " choice
+    
+    case "$choice" in
+        Y|y)
+            echo "keep_existing"
+            ;;
+        N|n)
+            echo "abort"
+            ;;
+        A|a)
+            echo "add_missing"
+            ;;
+        *)
+            echo -e "${RED}Invalid choice${NC}"
+            prompt_branch_strategy "$local_branches" "$existing_primary"
+            ;;
+    esac
+}
+
+# Manage local directory (check existence, create if needed)
+local_directory() {
+    local dir_name="$1"
+    local target_path
+    
+    # Support absolute and relative paths
+    if [[ "$dir_name" = /* ]]; then
+        target_path="$dir_name"
+    else
+        target_path="${BASE_DIR}/${dir_name}"
+    fi
+    
+    # Extract display components
+    local display_name=$(basename "$target_path")
+    local parent_path=$(dirname "$target_path")
+    
+    echo -e "${BLUE}Directory: ${YELLOW}$display_name${NC}"
+    echo -e "${BLUE}Parent: ${YELLOW}$parent_path${NC}"
+    
+    if [ -d "$target_path" ]; then
+        echo -e "${BLUE}Status: Using existing Directory${NC}"
+    else
+        mkdir -p "$target_path"
+        echo -e "${BLUE}Status: Created${NC}"
+    fi
+    
+    LOCAL_TARGET="$target_path"
+}
+
+# Manage git repository (detect or initialize)
+manage_git() {
+    local target="$1"
+    
+    cd "$target"
+    
+    # Check if .git exists
+    if [ -d ".git" ]; then
+        echo -e "${BLUE}Existing Git repository detected${NC}"
+        
+        # Check remotes and handle scenarios
+        local remote_count=$(git remote | wc -l)
+        
+        if [ "$remote_count" -gt 1 ]; then
+            # Scenario: Multiple remotes
+            echo -e "${RED}✗ Multiple remotes detected${NC}"
+            git remote -v
+            echo
+            echo -e "${YELLOW}git-remote-forge operates on 'origin' only${NC}"
+            echo -e "${YELLOW}Options:${NC}"
+            echo "  1. Rename other remotes: git remote rename <n> <new-name>"
+            echo "  2. Remove extra remotes: git remote remove <n>"
+            echo "  3. Manage this repo manually outside gitremote"
+            exit 1
+        elif [ "$remote_count" -eq 1 ]; then
+            # Scenario: Single remote (origin) exists
+            echo -e "${RED}✗ Remote 'origin' already configured${NC}"
+            echo -e "${BLUE}Current remote:${NC}"
+            git remote -v
+            echo
+            echo -e "${YELLOW}Options:${NC}"
+            echo "  1. Change remote: git remote set-url origin <new-url>"
+            echo "  2. Remove remote: git remote remove origin"
+            echo "  3. Rename remote: git remote rename origin <new-name>"
+            echo "  4. Manage this repo manually outside gitremote"
+            exit 1
+        fi
+        # else: No remotes - continue (OK)
+        
+        # Check if repo has branches
+        if has_branches "."; then
+            IS_EXISTING_REPO=true
+            echo -e "${GREEN}✓ Existing branches detected${NC}"
+        else
+            echo -e "${YELLOW}No branches detected - will initialize as new${NC}"
+        fi
+    else
+        # Initialize new repo
+        echo -e "${BLUE}Initializing new Git repository${NC}"
+        git init
+        IS_EXISTING_REPO=false
+    fi
+}
+
 # Main script
 main() {
-    echo "GitLab Repository Setup Script v${Version}"
+    echo "git-remote-forge - Repository Setup Script v${Version}"
     echo "-----------------------------"
     
     # Validate required inputs
@@ -442,13 +629,25 @@ main() {
         usage
     fi
     
+    # Step 1: Manage local directory
+    local_directory "$DIRECTORY_NAME"
+    
+    # Extract directory name from resolved path (remove full path)
+    DIRECTORY_NAME=$(basename "$LOCAL_TARGET")
+    
+    # Step 2: Manage git repository
+    manage_git "$LOCAL_TARGET"
+    
+    echo -e "${BLUE}Full path: ${YELLOW}$LOCAL_TARGET${NC}"
+    echo
+    
     # Get git user info
     contributor=$(get_git_user_info)
     
     # Set repository name
     REPO_NAME="$DIRECTORY_NAME"
 
-   # Setup provider with self-hosted URL if provided
+    # Step 3: Setup provider with self-hosted URL if provided
     setup_provider "$PROVIDER" "$TARGET" "$SELF_HOSTED_URL"
 
     echo -e "\nStarting repository setup..."
@@ -458,13 +657,18 @@ main() {
         preview_operations "$DIRECTORY_NAME" "$contributor" "$TECHNOLOGIES" "$CHECKOUT_BRANCH"
     fi
     
-    # Create local repository
-    create_local_repo "$DIRECTORY_NAME" "$contributor" "$TECHNOLOGIES"
+    # Step 4: Create git repo structure (README, initial commit) if new
+    if [ "$IS_EXISTING_REPO" = false ]; then
+        create_local_repo "$LOCAL_TARGET" "$contributor" "$TECHNOLOGIES"
+    fi
     
-    # Push to remote
-    push_to_remote "$CHECKOUT_BRANCH"
-    
-    echo -e "\nRepository setup completed successfully!"
+    # Step 5: Push to remote
+    if push_to_remote "$CHECKOUT_BRANCH"; then
+        echo -e "\n${GREEN}Repository setup completed successfully!${NC}"
+    else
+        echo -e "\n${RED}Repository setup completed with errors - see above for details${NC}"
+        exit 1
+    fi
 }
 
 # Parse command line arguments

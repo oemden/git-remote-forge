@@ -7,15 +7,23 @@ A tool to create and setup git projects locally and push them remotely on GitLab
 - SSH key setup and configured for GitLab access
 - GitLab namespace (username or group name where the repository will be created)
 
-## Features (v0.8)
-- Parameter-driven configuration: `-n` namespace, `-R` provider, `-T` technologies
-- Auto-detect technologies with `-t` flag (existing directory mode)
-- Multi-provider architecture (GitLab ready, GitHub, Bitbucket, Gitea to come)
-- Self-hosted provider support via `-S` option
-- Dry-run mode (default) with preview and confirmation
-- Force mode (`-f`) for automation
+## Features (v0.9.1)
+- Absolute and relative path support in `-d`
+- Better path display (directory name + parent separately)
+- Early abort on first fatal push error
+- Scenario-based remote conflict messaging
+
+## Features (v0.9.0)
+- Existing directory and git repository detection
+- Smart initialization (creates or uses existing dir/repo)
+- Branch detection and safe handling (no destructive changes)
+- Master vs main detection (legacy repo support)
+- Multi-provider architecture (GitLab, Gitea, GitHub, Bitbucket ready)
+- Parameter-driven config: `-n` namespace, `-R` provider, `-T` technologies
+- Auto-detect tech with `-t` flag
+- Self-hosted support via `-S` option
 - Provider-agnostic functions (StandardConfig abstraction)
-- Bash 3.x compatible (macOS compatible)
+- Bash 3.x compatible
 
 ## Branch Structure
 GIT REMOTE FORGE creates three default branches:
@@ -79,20 +87,25 @@ or
 
 ### Preview mode (default):
 
-- `gitremote -d project_name -b feature_branch -t "python,django"`
+- `gitremote -d project_name -n myuser -T "python,django"`
 
 ### Force mode (no preview):
 
-- `gitremote -d project_name -b feature_branch -f`
+- `gitremote -d project_name -n myuser -f`
 
 
 ## Options
 
-- `-d` : Directory/Project name
-- `-B` : If set, Branch to checkout after creation (default: `develop`)
-- `-t` : Technologies (optional, comma-separated)
-- `-f` : Force mode (skip dry-run and confirmation)
-- `-h` : Display help message
+- `-d` : Directory/Project name (required)
+- `-n` : Namespace/username (target on provider)
+- `-R` : Provider: gitlab|github|bitbucket|gitea (default: gitlab)
+- `-S` : Self-hosted URL (optional)
+- `-t` : Auto-detect technologies (flag, no argument)
+- `-T` : Technologies (comma-separated, optional)
+- `-B` : Branch to checkout (default: develop)
+- `-p` : Path to directory (optional)
+- `-f` : Force mode
+- `-h` : Help
 
 ### Preview Mode
 

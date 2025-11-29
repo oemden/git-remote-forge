@@ -1,6 +1,52 @@
 # Changelog
 
-All notable changes to GRF (git-remote-forge) are documented here.
+All notable changes to git-remote-forge are documented here.
+
+## [0.9.1] - 2025-11-29
+
+### Fixed
+- Support absolute paths in `-d` parameter (fixes double-path bug)
+- Extract basename from full paths for cleaner project name display
+- Early abort on first fatal push error (don't continue to next branch)
+- Better error messages with "aborting" feedback
+
+### Changed
+- Improved directory output: display name, parent path, and status separately
+- Clearer push error feedback per branch with immediate abort
+
+### Known Issues (backlog Phase 3)
+- Remote URL configured but online repo doesn't exist (needs provider API validation)
+
+---
+
+## [0.9.0] - 2025-11-29
+
+### Added
+- `local_directory()` function - manages directory creation/detection
+- `manage_git()` function - detects or initializes git repositories
+- `has_branches()` function - checks if repo has any commits/branches
+- Smart repo initialization: creates new if empty `.git`, uses existing if branches found
+- Early directory/git validation before provider setup
+- Support for empty `git init` repos (treats as new)
+- Scenario-based remote conflict messaging (multiple/single/none remotes)
+
+### Changed
+- Refactored `create_local_repo()` - now only handles README + commit (no mkdir)
+- Refactored `main()` workflow into 5 clear steps: dir → git → provider → create → push
+- `push_to_remote()` now handles both new repos (create branches) and existing (push all)
+- Early detection approach: validates dir/git before user interaction
+
+### Fixed
+- No more "directory exists" errors when using empty `.git` repos
+- Handles existing repos without destroying branch structure
+- Safe approach: detects state, never modifies without explicit flow
+
+### Architecture Changes
+- Separation of concerns: directory management vs git management
+- `IS_EXISTING_REPO` flag now accurately reflects branch existence, not just `.git` presence
+- LocalTarget path exported from `local_directory()` for downstream functions
+
+---
 
 ## [0.8] - 2025-11-29
 
@@ -21,15 +67,10 @@ All notable changes to GRF (git-remote-forge) are documented here.
 - Removed `-e` flag; auto-detect existing .git directory instead
 - Renamed `push_to_gitlab()` → `push_to_remote()` (provider-agnostic)
 - Updated help text with usage modes and examples
-- Version bumped to 0.8
 
 ### Fixed
 - Parameter handling for multi-provider setup
 - Technology output in README now respects `-T` parameter
-
-### Notes
-- Architecture ready for GitHub and Bitbucket provider implementation
-- Next phase: Existing directory initialization logic
 
 ---
 
@@ -48,11 +89,6 @@ All notable changes to GRF (git-remote-forge) are documented here.
 
 ### Changed
 - Refactored technology detection logic into provider-agnostic functions
-- Version bumped to 0.7.1
-
-### Notes
-- Architecture ready for GitHub and Bitbucket provider support
-- Next phase: `-t --target` and `-R --repo` parameters
 
 ---
 

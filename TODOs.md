@@ -45,36 +45,54 @@
 - [x] Add provider routing (setup_provider function)
 - [x] Add handle_gitea_setup() adapter
 
----
-
-## CURRENT WORK: Phase 2 - Existing Directory Support
-**Branch:** `feature/existing-directory-init`
-
-### Existing Directory/Repository Support
-- [ ] Remove hardcoded `-d` requirement (optional for existing mode)
-- [ ] Auto-detect `.git` directory in current location
-- [ ] Auto-detect if `-p` path contains existing git repo
-- [ ] Skip `mkdir` and `git init` if .git exists
-- [ ] Handle existing remote configuration
-- [ ] Handle existing branches (don't recreate main/production/develop)
-- [ ] Initialize new repos in existing directory with files
-- [ ] Call `detect_technologies()` when `-t` flag provided
-- [ ] Update README with detected/user-provided technologies
-- [ ] Support both modes: `grf -n user -t` and `grf -p /path -n user -t`
-
-### Documentation & Tests
-- [ ] Update README with existing directory mode examples
-- [ ] Test new repo creation (ensure backward compatible)
-- [ ] Test existing directory without .git
-- [ ] Test existing git repo (add remote only)
-- [ ] Test `-t` auto-detect functionality
-- [ ] Test technology output in README
+### Phase 2: Existing Directory Support (v0.9.0) ✅ COMPLETE
+- [x] `local_directory()` - manage dir creation/detection
+- [x] `manage_git()` - detect or initialize git repos
+- [x] `has_branches()` - check if repo has branches
+- [x] Smart init: empty `.git` → new, branches exist → existing
+- [x] Refactor `create_local_repo()` - only README + commit (no mkdir)
+- [x] Refactor `main()` - 5 step workflow
+- [x] Update `push_to_remote()` - handle both new and existing
+- [x] Early validation before provider setup
+- [x] Support empty `git init` repos (backwards compatible)
+- [x] Safe approach: detect state, never destroy
+- [x] Scenario-based remote messaging (multiple/single/none)
+- [x] Show remote URLs in conflict messages
+- [x] Tested: empty dir, empty .git, existing repo with branches
 
 ---
 
-## Phase 3: Foundation & Configuration
+## BACKLOG - Phase 3+
 
-### Config File System
+### Setup Validation & Error Handling
+- [x] Detect git push failures, exit with error code
+- [ ] Validate remote created before success message
+- [ ] Check remote repo exists on provider before push
+- [ ] Provide clear error messages with troubleshooting steps
+- [ ] Add `-v/--verbose` flag for detailed output
+- [ ] Add `--dry-run` option (parse only, no execution)
+
+### Path Handling Improvements
+- [x] Support absolute paths in `-d` parameter (v0.9.1)
+- [x] Better formatted path output (v0.9.1)
+- [x] Display full path in output (v0.9.1)
+- [ ] Merge `-d` and `-p` logic (clarify intent)
+- [ ] Add path validation before operations
+- [ ] Warn on deeply nested paths
+
+### Remote Management Enhancements
+- [ ] Add `--force-remote` flag to skip remote conflict checks
+- [ ] Add `--change-remote` option with URL parameter
+- [ ] Support workflow: detect remote conflict → prompt user → execute option
+- [ ] Add pre-configured options menu for common scenarios:
+  - Change remote URL (git remote set-url origin)
+  - Remove remote (git remote remove origin)
+  - Rename remote (git remote rename origin)
+  - List all remotes with fetch/push URLs
+  - Validate remote exists before push
+- [ ] Background: Allow managing multiple remotes (Phase 4+)
+
+### Phase 3: Config File System
 - [ ] Create `.grfconfig` template in `~/.config/.gitremoteforge/`
 - [ ] Parse config file on startup
 - [ ] Allow parameter override of config values
