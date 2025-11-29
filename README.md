@@ -2,28 +2,36 @@
 
 A tool to create and setup git projects locally and push them remotely on GitLab, with a focus on streamlined repository initialization and remote platform integration.
 
+## Status
+
+**v0.9.1 - Ready for Use (GitLab Only)**
+
+git-remote-forge has reached a stable state suitable for production use.
+The core workflow is tested and reliable: create local repositories, initialize branches by default (main, develop, production) localy, then push to GitLab with a single command. 
+GitHub, Bitbucket, and Gitea providers are in the roadmap but not yet implemented. 
+If you use GitLab, this tool will save you time on repetitive setup tasks.
+
+For exemple:
+
+create a local empty directory, set up git branches or use an existing directory ( with or without git initiated) and push the newly created repo to your gitlab's namespace in a single command.
+
+- Start from scratch:
+
+```
+gitremote -d my-noexisting-repo -n my_gitlab_namespace -R gitlab -B develop
+```
+
+- Use an existing directory, on which you've started working locally:
+
+```
+gitremote.sh -d /path/to/my-existing-repo -n my_gitlab_namespace -R gitlab -B develop -T "python"
+```
+
+
 ## Prerequisites
 - Git configured locally (`user.name` and `user.email`)
 - SSH key setup and configured for GitLab access
 - GitLab namespace (username or group name where the repository will be created)
-
-## Features (v0.9.1)
-- Absolute and relative path support in `-d`
-- Better path display (directory name + parent separately)
-- Early abort on first fatal push error
-- Scenario-based remote conflict messaging
-
-## Features (v0.9.0)
-- Existing directory and git repository detection
-- Smart initialization (creates or uses existing dir/repo)
-- Branch detection and safe handling (no destructive changes)
-- Master vs main detection (legacy repo support)
-- Multi-provider architecture (GitLab, Gitea, GitHub, Bitbucket ready)
-- Parameter-driven config: `-n` namespace, `-R` provider, `-T` technologies
-- Auto-detect tech with `-t` flag
-- Self-hosted support via `-S` option
-- Provider-agnostic functions (StandardConfig abstraction)
-- Bash 3.x compatible
 
 ## Branch Structure
 GIT REMOTE FORGE creates three default branches:
@@ -87,11 +95,11 @@ or
 
 ### Preview mode (default):
 
-- `gitremote -d project_name -n myuser -T "python,django"`
+- `gitremote -d project_name -n my_gitlab_namespace -T "python,django"`
 
 ### Force mode (no preview):
 
-- `gitremote -d project_name -n myuser -f`
+- `gitremote -d project_name -n my_gitlab_namespace -f`
 
 
 ## Options
