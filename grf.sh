@@ -7,7 +7,7 @@
 #   - production: for production releases
 #   - develop: active development branch
 
-Version="0.7"
+Version="0.7.1"
 
 # Prerequisites:
 # - Git configured locally (user.name and user.email)

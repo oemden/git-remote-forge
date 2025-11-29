@@ -7,14 +7,16 @@ A tool to create and setup git projects locally and push them remotely on GitLab
 - SSH key setup and configured for GitLab access
 - GitLab namespace (username or group name where the repository will be created)
 
-## Features (v0.7)
+## Features (v0.7.1)
 - Dry-run mode (default) to preview all operations before execution
 - Force mode (`-f`) to skip preview and confirmation
 - Single project creation with consistent local and remote naming
 - Git user information automatically retrieved from git config
 - Optional technology specification or auto-detection
 - Custom branch creation
-- Run the script from anywhere now
+- Run the script from anywhere
+- Provider abstraction architecture (ready for multi-platform support)
+- Bash 3.x compatible (macOS compatible)
 
 ## Branch Structure
 GRF creates three default branches:

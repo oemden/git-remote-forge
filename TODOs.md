@@ -21,26 +21,29 @@
 
 ---
 
-## CURRENT WORK: Provider Abstraction Refactor
-**Branch:** `refactor/provider-abstraction`
+## COMPLETED ✅
 
-### Phase 0: Architecture & Refactoring (NOW)
-- [ ] Define StandardConfig structure (vars/fields all providers export)
-- [ ] Extract GitLab logic into `handle_gitlab_setup()` adapter
-- [ ] Rewrite core functions to use StandardConfig only (agnostic)
-- [ ] Validate all GitLab workflows work post-refactor
-- [ ] GitHub quick assessment (minimal `handle_github_setup()` draft)
-- [ ] Update script version to 0.8
+### Phase 0: Architecture & Refactoring
+- [x] Define StandardConfig structure (ARCHITECTURE.md)
+- [x] Extract GitLab logic into `handle_gitlab_setup()` adapter
+- [x] Rewrite core functions to use StandardConfig (agnostic)
+- [x] Validate all GitLab workflows work post-refactor
+- [x] Fix bash 3.x compatibility (declare -A → case statements)
+- [x] Update script version to 0.7.1
 
 ---
 
-## Phase 1: Core Features (AFTER REFACTOR)
+## CURRENT WORK: Phase 1 - Target & Provider Support
+**Branch:** `feature/target-and-provider`
 
-### Target & Provider Support
-- [ ] Add `-t, --target` parameter (namespace/username agnostic)
+### Target & Provider Parameters
+- [ ] Add `-t, --target` parameter (namespace/username)
 - [ ] Add `-R, --repo` parameter (gitlab|github|bitbucket)
 - [ ] Rename `-t` to `-T, --tech` for technologies
-- [ ] Update preview/output to reflect target and provider
+- [ ] Update parse_arguments() with new options
+- [ ] Update usage() documentation
+- [ ] Pass parameters to handle_gitlab_setup()
+- [ ] Add provider routing (case statement for handle_<provider>_setup)
 
 ### Existing Repository Support
 - [ ] Add `-e, --existing` flag for existing repo mode
@@ -49,8 +52,6 @@
 - [ ] Skip `mkdir` and `git init` in existing mode
 - [ ] Validate existing remote or add new remote
 - [ ] Handle existing branches (don't recreate if present)
-- [ ] Detect if Remote repo exists
-- [ ] Detect if Local repo/ directory exists
 
 ### Documentation
 - [ ] Update README.md with new parameters
@@ -62,17 +63,13 @@
 ## Phase 2: Foundation & Configuration
 
 ### Config File System
-- [ ] Create example config file (`grfconfig.example`) 
-- [ ] propose to curl the file from online repo
-- [ ] Add `.grfconfig` to `.gitignore` (local + global) - maybe useless as file inside user's homne dir.
+- [ ] Create `.grfconfig` template in `~/.config/.gitremoteforge/`
 - [ ] Parse config file on startup
 - [ ] Allow parameter override of config values
 - [ ] Create example config file (`grfconfig.example`)
 - [ ] Add `.grfconfig` to `.gitignore` (local + global)
 
 ### Multi-Platform Support Architecture
-- [ ] Create provider abstraction layer/syntax unifier
-- [ ] Implement GitLab provider wrapper (refactor from current)
 - [ ] Implement GitHub provider (API-based repo creation)
 - [ ] Implement Bitbucket provider (optional for v1)
 - [ ] URL pattern detection per provider (git@gitlab.com: vs github.com/)
