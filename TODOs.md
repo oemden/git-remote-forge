@@ -1,50 +1,122 @@
 ## TODO List
 
-### High Priority
-- [ ]  🚧 **Add target**: ( namespace, username or group name where the repository will be created, same for Github, bitbucket)
-- [ ]  🚧 **Multi-platform Support**: Add support for GitHub, Bitbucket, and self-hosted Git servers
-- [ ]  🚧 **syntax unifier** ( intermediate function for commands from different providers (github, gitlab, bitbukcet, ..) -> make workflow Provider agnostic? )
-- [ ]  🚧 **Configuration File**: Create `.grfconfig` for storing default namespace and preferences, always add to gitignore
-- [ ]  🚧  **create grfconfig.exemple
-- [ ]  🚧 **Error Handling**: Improve error messages and recovery options
-- [ ]  🚧 **Validation**: Check if remote repository already exists before pushing
-- [ ]  🚧 **.gitignore**: manage gitingore at creation of repo ( or exisiting repo ) with industry basic ( .venv, .env, .secrets, .build ...)
-- [ ]  🚧 Init in existing Directory
-- [ ]  🚧 Manage White spaces and special characters in Repo Name
-- [ ]  🚧 Public / Private Options
-- [ ]  🚧 Branch rules Options  ( protected branches, ... )
-- [ ]  🚧 Custom Branches Names
- 
-### Medium Priority
-- [ ]  🚧 **Template Support**: Allow custom README templates
-- [ ]  🚧 **License Selection**: Add option to include license file
-- [ ]  🚧 **.gitignore Generation**: Create appropriate .gitignore based on detected technologies
-- [ ]  🚧 **Batch Mode**: Support creating multiple repositories from a list
-- [ ]  🚧 **Update Mode**: Allow updating existing repositories with GRF features
-- [ ]  🚧 **Existing Repo** make it possible to use the tool in an existing Repo
-- [ ]  🚧 **Manage Branch Rules and Protection** decide whihc branches are protected adn option to choose default branch
-- [ ]  🚧 **Target Group (Gitlab)** Option to set target group for Gitlab
-- [ ]  🚧 **ensure credntials are valid**: Gitlab then github
-- [ ]  🚧 **URL Pattern for origin URL**: Gitlab vs Github
-- [ ]  🚧 **Option to choose remote**: Gitlab vs GitHub ( for now )
-- [ ]  🚧 **Install Script**: ( check n3u script )
-- [ ]  🚧 **Check Credentials**: ( User's env, ssh keys and or provider access check )
-    - [ ]  🚧 allow Credentials bypass: ( local .env, parameters? )
+### Parameter Strategy
+```
+-d, --dir          Project directory/name (required for new repo)
+-t, --target       Namespace/username (GitLab groups, GitHub users, etc.)
+-R, --repo         Provider: gitlab|github|bitbucket (default: gitlab)
+-T, --tech         Technologies (comma-separated, optional)
+-B, --branch       Checkout branch after creation (default: develop)
+-e, --existing     Existing repo mode (detect or explicit flag)
+-p, --path         Path to repo (optional, for existing repo outside cwd)
+-f, --force        Skip preview and confirmation
+-h, --help         Display help message
+```
 
-### Low Priority
-- [ ]  🚧 **Interactive Mode**: Full interactive setup wizard for beginners
-- [ ]  🚧 **Logging**: Add detailed logging with verbosity levels
-- [ ]  🚧 **Hooks Integration**: Support for pre/post creation hooks
-- [ ]  🚧 **Statistics**: Track repository creation history and metrics
-- [ ]  🚧 **Plugin System**: Allow extending functionality with custom scripts
-- [ ]  🚧 **Show git repo options**: ( aka remote origin, branches, ... )
+### Configuration
+- Location: `~/.config/.gitremoteforge/.grfconfig`
+- Priority: Parameters override config file
+- Content: default target, default provider, default technologies, default branch
+- No `-c` parameter needed; config is implicit in standard location
 
-### Future Enhancements
-- [ ]  🚧 **API Integration**: Use GitLab API / Github API for more advanced features
-- [ ]  🚧 **GitHub API handling**:  to create Repos from grf and not only Gitlab
-- [ ]  🚧 **Team Collaboration**: Support for adding collaborators during creation
-- [ ]  🚧 **CI/CD Integration**: Optional GitLab CI/CD pipeline setup
-- [ ]  🚧 **Documentation Generation**: Auto-generate docs based on code analysis
-- [ ]  🚧 **Version Control**: Track GRF version used to create each repository
+---
 
+## Phase 1: Core Features (IMMEDIATE)
 
+### Target & Provider Support
+- [ ] Add `-t, --target` parameter (namespace/username agnostic)
+- [ ] Add `-R, --repo` parameter (gitlab|github|bitbucket)
+- [ ] Rename `-t` to `-T, --tech` for technologies
+- [ ] Update preview/output to reflect target and provider
+
+### Existing Repository Support
+- [ ] Add `-e, --existing` flag for existing repo mode
+- [ ] Add `-p, --path` parameter (optional path to repo)
+- [ ] Auto-detect `.git` directory in current location
+- [ ] Skip `mkdir` and `git init` in existing mode
+- [ ] Validate existing remote or add new remote
+- [ ] Handle existing branches (don't recreate if present)
+
+### Documentation
+- [ ] Update README.md with new parameters
+- [ ] Update usage examples
+- [ ] Document both new-repo and existing-repo workflows
+
+---
+
+## Phase 2: Foundation & Configuration
+
+### Config File System
+- [ ] Create `.grfconfig` template in `~/.config/.gitremoteforge/`
+- [ ] Parse config file on startup
+- [ ] Allow parameter override of config values
+- [ ] Create example config file (`grfconfig.example`)
+- [ ] Add `.grfconfig` to `.gitignore` (local + global)
+
+### Multi-Platform Support Architecture
+- [ ] Create provider abstraction layer/syntax unifier
+- [ ] Implement GitLab provider wrapper (refactor from current)
+- [ ] Implement GitHub provider (API-based repo creation)
+- [ ] Implement Bitbucket provider (optional for v1)
+- [ ] URL pattern detection per provider (git@gitlab.com: vs github.com/)
+
+### Credential & Validation
+- [ ] Validate Git config (user.name, user.email)
+- [ ] Check SSH key setup per provider
+- [ ] Validate namespace/username exists (API check)
+- [ ] Validate remote repo doesn't already exist
+- [ ] Allow credential bypass via local .env or parameters
+
+---
+
+## Phase 3: Enhancement Features
+
+### .gitignore Management
+- [ ] Generate .gitignore based on detected technologies
+- [ ] Support industry-standard templates (.venv, .env, .secrets, .build, etc.)
+- [ ] Allow custom .gitignore specification
+
+### Branch & Repository Rules
+- [ ] Public/private repository option (`--visibility`)
+- [ ] Branch protection rules configuration
+- [ ] Set default branch per provider
+- [ ] Custom branch names (instead of fixed main/production/develop)
+- [ ] Branch naming validation (spaces, special chars)
+
+### Repository Metadata
+- [ ] License selection option
+- [ ] Description option
+- [ ] README template support
+- [ ] Manage whitespace and special characters in repo names
+
+---
+
+## Phase 4: Advanced Features
+
+### Batch & Template Operations
+- [ ] Batch mode: create multiple repos from list
+- [ ] Update mode: GRF features on existing repositories
+- [ ] Template support: custom README templates
+- [ ] Interactive wizard mode for beginners
+
+### Monitoring & Integration
+- [ ] Logging with verbosity levels
+- [ ] Repository creation history tracking
+- [ ] Pre/post creation hooks
+- [ ] CI/CD pipeline templates (GitLab CI/GitHub Actions)
+
+### Provider-Specific Features
+- [ ] GitLab API integration (advanced features)
+- [ ] GitHub API full integration
+- [ ] Team collaboration: add collaborators during creation
+- [ ] Auto-generate documentation from code analysis
+
+---
+
+## Low Priority (Future)
+
+- [ ] Plugin system for custom extensions
+- [ ] GRF version tracking per repository
+- [ ] Statistics and metrics
+- [ ] Show git repo options (remote, branches, etc.)
+- [ ] Install script for setup
