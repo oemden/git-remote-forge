@@ -1,4 +1,4 @@
-# GRF (git-remote-forge)
+# GIT REMOTE FORGE (git-remote-forge)
 
 A tool to create and setup git projects locally and push them remotely on GitLab, with a focus on streamlined repository initialization and remote platform integration.
 
@@ -10,7 +10,7 @@ A tool to create and setup git projects locally and push them remotely on GitLab
 ## Features (v0.8)
 - Parameter-driven configuration: `-n` namespace, `-R` provider, `-T` technologies
 - Auto-detect technologies with `-t` flag (existing directory mode)
-- Multi-provider architecture (GitLab, GitHub, Bitbucket, Gitea ready)
+- Multi-provider architecture (GitLab ready, GitHub, Bitbucket, Gitea to come)
 - Self-hosted provider support via `-S` option
 - Dry-run mode (default) with preview and confirmation
 - Force mode (`-f`) for automation
@@ -18,7 +18,7 @@ A tool to create and setup git projects locally and push them remotely on GitLab
 - Bash 3.x compatible (macOS compatible)
 
 ## Branch Structure
-GRF creates three default branches:
+GIT REMOTE FORGE creates three default branches:
 
 - `main`: Primary branch for stable code
 - `production`: Production-ready releases
@@ -34,7 +34,7 @@ The script automatically:
 
 You can specify a different branch to checkout using the `-B` option:
 
-`grf -d project_name -B production  # Creates all branches, checks out to production`
+`gitremote -d project_name -B production  # Creates all branches, checks out to production`
 
 - Default working branch is `develop` unless specified via `-B`
 
@@ -55,29 +55,35 @@ You can specify a different branch to checkout using the `-B` option:
 `cd git-remote-forge`
 
 ### Make the script executable
-`chmod +x grf.sh`
+`chmod +x gitremote.sh`
 
 ### Optional: 
 
+**use install script**
+
+`bash install.sh` will install git-remote-forge `gitremote.sh` to `/usr/local/bin/gitremote`
+
+or do it manually
+
 **Add to `/usr/local/bin/`**
 
-`cp grf.sh grf`
+`cp gitremote.sh gitremote`
 
 or
 
 **Add to your PATH**
 
-`sudo ln -s $(pwd)/grf /usr/local/bin/grf`
+`sudo ln -s $(pwd)/gitremote /usr/local/bin/gitremote`
 
 ##  Usage
 
 ### Preview mode (default):
 
-- `grf -d project_name -b feature_branch -t "python,django"`
+- `gitremote -d project_name -b feature_branch -t "python,django"`
 
 ### Force mode (no preview):
 
-- `grf -d project_name -b feature_branch -f`
+- `gitremote -d project_name -b feature_branch -f`
 
 
 ## Options

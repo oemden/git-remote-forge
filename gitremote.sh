@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# GRF (git-remote-forge)
+# gitremote (git-remote-forge)
 # A tool to create and setup git projects locally and push it remotely via ssh ( on gitlab.com for Now )
 # Creates three default branches:
 #   - main: primary branch
@@ -41,9 +41,9 @@ NC='\033[0m' # No Color
 usage() {
     echo "Usage: $0 [OPTIONS]"
     echo "Options:"
-    echo "  -d    Directory/Project name (required for new repo)"
-    echo "  -n    Namespace/username (target on provider)"
-    echo "  -R    Provider: gitlab|github|bitbucket|gitea (default: gitlab)"
+    echo "  -d    Local Directory/Project name (required for new repo)"
+    echo "  -n    Namespace - for Gitlab /username - for GitHub (target on provider)"
+    echo "  -R    Provider: gitlab|github|bitbucket|gitea (default: gitlab for now)"
     echo "  -S    Self-hosted URL (optional, for self-hosted providers)"
     echo "  -t    Auto-detect technologies (existing directory mode)"
     echo "  -T    Technologies (user-provided, comma-separated, optional)"
@@ -53,9 +53,9 @@ usage() {
     echo "  -h    Display this help message"
     echo
     echo "Modes:"
-    echo "  New Repository:       grf -d myproject -n myuser -T 'python,js'"
-    echo "  Existing Directory:   grf -n myuser -t (auto-detect) or -T 'tech'"
-    echo "  Existing Directory:   grf -p /path/to/dir -n myuser -t"
+    echo "  New Repository:       gitremote -d myproject -n myuser -T 'python,js'"
+    echo "  Existing Directory:   gitremote -n myuser -t (auto-detect) or -T 'tech'"
+    echo "  Existing Directory:   gitremote -p /path/to/dir -n myuser -t"
     echo
     echo "Default branches created: main, production, develop"
     echo "Default checkout: develop (unless -B specified)"
