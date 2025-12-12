@@ -1,5 +1,13 @@
 ## TODO List
 
+- Create a .repo_initiated_by_gitremoteforge ( with gitremote versionn, add to .gitignore if exist)
+- `-o`, --remote-name  Set Remote Name ( default: origin ) # TODO
+- `-g`, --gitignore    Create basic std .gitignore file ( default: .*env, !.env.example, .repo_init_by_gitremoteforge) #TODO
+- `-G`,                Specify what to add to .gitignore ? #TODO
+- `-v`                 Display git-remote-forge version
+- `-V`                 show git remote(s) in current dir `git remote -v` ( detect if `$PWD` is a git repo)
+- `-a`                 add other remote -> origin vs secondary etc... ( should be runned in second step, would require -n,-R,-S, -p (optionnal) )
+
 ### Parameter Strategy
 ```
 -d, --dir          Project directory/name (required for new repo)
@@ -9,6 +17,10 @@
 -t                 Auto-detect technologies (existing directory mode only)
 -T, --tech         Technologies (user-provided, comma-separated, optional)
 -B, --branch       Checkout branch after creation (default: develop)
+-o, --remote-name  Set Remote Name ( default: origin ) # TODO
+-a, --add-remote-name  Add secondary Remote Name ( should be runned in second step, would require -n,-R,-S, -p (optionnal) ) # TODO ?
+-i, --gitignore    Create basic std gitignore file ( default: .*env, !.env.example, .repo_init_by_gitremoteforge) #TODO
+-I,                Specify what to add to .gitignore ? #TODO
 -p, --path         Path to local directory (existing directory mode)
 -f, --force        Skip preview and confirmation
 -h, --help         Display help message
