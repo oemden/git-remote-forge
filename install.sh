@@ -9,7 +9,7 @@ SCRIPT_SOURCE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/gitremote.sh"
 
 # Check if the script source file exists
 if [ ! -f "$SCRIPT_SOURCE_PATH" ]; then
-    echo "Error: Scripts/gitremote.sh not found in the current directory."
+    echo "Error: gitremote.sh not found in the current directory."
     exit 1
 fi
 
