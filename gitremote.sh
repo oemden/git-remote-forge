@@ -7,7 +7,7 @@
 #   - production: for production releases
 #   - develop: active development branch
 
-Version="0.9.2"
+Version="0.9.3"
 
 # Prerequisites:
 # - Git configured locally (user.name and user.email)
@@ -29,6 +29,7 @@ AUTO_DETECT_TECH=false
 DIRECTORY_PATH=""
 IS_EXISTING_REPO=false
 FORCE_MODE=false
+DEFER_GIT_INIT_AFTER_APPROVAL=true  # Defer git init until after user confirmation (set to false if .git already exists)
 TARGET=""
 PROVIDER="gitlab"
 CHECKOUT_BRANCH="develop"
@@ -744,6 +745,7 @@ manage_git() {
     # Check if .git exists
     if [ -d ".git" ]; then
         echo -e "${BLUE}Existing Git repository detected${NC}"
+        DEFER_GIT_INIT_AFTER_APPROVAL=false  # No need to defer, repo already exists
         
         # Check remotes and handle scenarios
         local remote_count=$(git remote | wc -l)
@@ -819,9 +821,9 @@ manage_git() {
             echo -e "${YELLOW}No branches detected - will initialize as new${NC}"
         fi
     else
-        # No .git directory: Initialize new repository
-        echo -e "${BLUE}Initializing new Git repository${NC}"
-        git init
+        # No .git directory: Keep deferral flag true (will initialize after user confirmation)
+        echo -e "${BLUE}No Git repository detected - will initialize after confirmation${NC}"
+        # DEFER_GIT_INIT_AFTER_APPROVAL is already true by default
         IS_EXISTING_REPO=false
     fi
 }
@@ -877,6 +879,13 @@ main() {
     # Preview operations if not in force mode
     if [ "$FORCE_MODE" = false ]; then
         preview_operations "$DIRECTORY_NAME" "$contributor" "$TECHNOLOGIES" "$CHECKOUT_BRANCH"
+    fi
+    
+    # Initialize git repository if deferred (after user confirmation)
+    if [ "$DEFER_GIT_INIT_AFTER_APPROVAL" = true ]; then
+        echo -e "${BLUE}Initializing new Git repository${NC}"
+        cd "$LOCAL_TARGET"
+        git init
     fi
     
     # Step 4: Create git repo structure (README, initial commit) if new
