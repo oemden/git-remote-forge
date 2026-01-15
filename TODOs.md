@@ -1,42 +1,51 @@
-## TODO List
+# TODO List
 
+- `-K` --keep          Keep existing files eg: README.md, .gitignore
 - Create a .repo_initiated_by_gitremoteforge ( with gitremote versionn, add to .gitignore if exist)
 - `-o`, --remote-name  Set Remote Name ( default: origin ) # TODO
-- `-g`, --gitignore    Create basic std .gitignore file ( default: .*env, !.env.example, .repo_init_by_gitremoteforge) #TODO
-- `-G`,                Specify what to add to .gitignore ? #TODO
-- `-v`                 Display git-remote-forge version
-- `-V`                 show git remote(s) in current dir `git remote -v` ( detect if `$PWD` is a git repo)
-- `-a`                 add other remote -> origin vs secondary etc... ( should be runned in second step, would require -n,-R,-S, -p (optionnal) )
+- `-i`, --gitignore    Create basic std .gitignore file ( default: .*env, !.env.example, .repo_init_by_gitremoteforge) #TODO
+- `-I`,                Specify what to add to .gitignore ? #TODO
+- `--version`                 Display git-remote-forge version
+- `-v`                 show git remote(s) in current dir `git remote -v` ( detect if `$PWD` is a git repo)
+- `-R`                 add other remote -> origin vs secondary etc... ( should be runned in second step, would require -n,-R,-S, -p (optionnal) )
+- `-O`                 Override any existing .git in existing target directory
 
-### Parameter Strategy
-```
+## Parameter Strategy
+
+```bash
 -d, --dir          Project directory/name (required for new repo)
+-c, --current      Project directory/name (required for new repo) from current Directory. ( no -d), same as -p
 -n, --namespace    Namespace/username (target on provider)
--R, --repo         Provider: gitlab|github|bitbucket|gitea (default: gitlab)
--S, --self-hosted  Self-hosted URL (optional, for self-hosted instances)
+-P, --repo-provider Provider: (gitlab|github|bitbucket|gitea) (default: gitlab)
+-S, --self-hosted  Self-hosted URL (optional, for self-hosted instances gitlab|gitea)
 -t                 Auto-detect technologies (existing directory mode only)
 -T, --tech         Technologies (user-provided, comma-separated, optional)
--B, --branch       Checkout branch after creation (default: develop)
--o, --remote-name  Set Remote Name ( default: origin ) # TODO
--a, --add-remote-name  Add secondary Remote Name ( should be runned in second step, would require -n,-R,-S, -p (optionnal) ) # TODO ?
+-b, --branch       Checkout branch after creation (default: develop)
+-B, --branches       Add / Override  specific custom branches (other than develop|main|production)
+-r, --remote-name  Set Remote Name ( default: origin ) # TODO
+-R, --add-remote-name  Add secondary Remote Name ( should be runned in second step, would require -n,-o, -O,-S, -p (optionnal) ) # TODO ?
 -i, --gitignore    Create basic std gitignore file ( default: .*env, !.env.example, .repo_init_by_gitremoteforge) #TODO
 -I,                Specify what to add to .gitignore ? #TODO
 -p, --path         Path to local directory (existing directory mode)
 -f, --force        Skip preview and confirmation
 -h, --help         Display help message
+--dry              Dry Mode, eg: do not do anything, just show remote repo URL, remote name (origin), branches to create
 ```
 
 ### Configuration
+
 - Location: `~/.config/.gitremoteforge/.grfconfig`
 - Priority: Parameters override config file
 - Content: default namespace, default provider, default technologies, default branch
 - No `-c` parameter needed; config is implicit in standard location
+- trim white spaces ( -d option) echo error ask user to continue (trim) or abort
 
 ---
 
 ## COMPLETED ✅
 
 ### Phase 0: Architecture & Refactoring
+
 - [x] Define StandardConfig structure (ARCHITECTURE.md)
 - [x] Extract GitLab logic into `handle_gitlab_setup()` adapter
 - [x] Rewrite core functions to use StandardConfig (agnostic)
@@ -45,6 +54,7 @@
 - [x] Update script version to 0.7.1
 
 ### Phase 1: Target & Provider Support (v0.8)
+
 - [x] Add `-n, --namespace` parameter (replaces interactive prompt)
 - [x] Add `-R, --repo` parameter (gitlab|github|bitbucket|gitea)
 - [x] Rename `-t` to `-n` for namespace, use `-t` for auto-detect tech
@@ -58,6 +68,7 @@
 - [x] Add handle_gitea_setup() adapter
 
 ### Phase 2: Existing Directory Support (v0.9.0-0.9.1) ✅ COMPLETE
+
 - [x] `local_directory()` - manage dir creation/detection
 - [x] `manage_git()` - detect or initialize git repos
 - [x] `has_branches()` - check if repo has branches
@@ -81,6 +92,7 @@
 ## BACKLOG - Phase 3+
 
 ### Testing & CI/CD
+
 - [ ] Create test automation script covering core scenarios
 - [ ] Test scenarios: new repo, absolute path, relative path, existing .git, existing branches, remote conflicts, push failures, force mode
 - [ ] Prepare CI/CD pipeline for develop→main merges
@@ -90,6 +102,7 @@
 - [ ] Coverage: success paths and error paths
 
 ### Setup Validation & Error Handling
+
 - [ ] Validate remote created before success message
 - [ ] Check remote repo exists on provider before push (Phase 3)
 - [ ] Provide clear error messages with troubleshooting steps
@@ -97,6 +110,7 @@
 - [ ] Add `--dry-run` option (parse only, no execution)
 
 ### Path Handling Improvements
+
 - [x] Support absolute paths in `-d` parameter (v0.9.1)
 - [x] Better formatted path output (v0.9.1)
 - [x] Display full path in output (v0.9.1)
@@ -105,6 +119,7 @@
 - [ ] Warn on deeply nested paths
 
 ### Remote Management Enhancements
+
 - [ ] Add `--force-remote` flag to skip remote conflict checks
 - [ ] Add `--change-remote` option with URL parameter
 - [ ] Support workflow: detect remote conflict → prompt user → execute option
@@ -117,6 +132,7 @@
 - [ ] Background: Allow managing multiple remotes (Phase 4+)
 
 ### Phase 3: Config File System
+
 - [ ] Create `.grfconfig` template in `~/.config/.gitremoteforge/`
 - [ ] Parse config file on startup
 - [ ] Allow parameter override of config values
@@ -124,11 +140,13 @@
 - [ ] Add `.grfconfig` to `.gitignore` (local + global)
 
 ### Multi-Platform Support Architecture
+
 - [ ] Implement GitHub provider (API-based repo creation)
 - [ ] Implement Bitbucket provider (optional for v1)
-- [ ] URL pattern detection per provider (git@gitlab.com: vs github.com/)
+- [ ] URL pattern detection per provider (git@gitlab.com: vs github.com)
 
 ### Credential & Validation
+
 - [ ] Validate Git config (user.name, user.email)
 - [ ] Check SSH key setup per provider
 - [ ] Validate namespace/username exists (API check)
@@ -140,11 +158,13 @@
 ## Phase 4: Enhancement Features
 
 ### .gitignore Management
+
 - [ ] Generate .gitignore based on detected technologies
 - [ ] Support industry-standard templates (.venv, .env, .secrets, .build, etc.)
 - [ ] Allow custom .gitignore specification
 
 ### Branch & Repository Rules
+
 - [ ] Public/private repository option (`--visibility`)
 - [ ] Branch protection rules configuration
 - [ ] Set default branch per provider
@@ -152,6 +172,7 @@
 - [ ] Branch naming validation (spaces, special chars)
 
 ### Repository Metadata
+
 - [ ] License selection option
 - [ ] Description option
 - [ ] README template support
@@ -162,18 +183,21 @@
 ## Phase 5: Advanced Features
 
 ### Batch & Template Operations
+
 - [ ] Batch mode: create multiple repos from list
 - [ ] Update mode: GRF features on existing repositories
 - [ ] Template support: custom README templates
 - [ ] Interactive wizard mode for beginners
 
 ### Monitoring & Integration
+
 - [ ] Logging with verbosity levels
 - [ ] Repository creation history tracking
 - [ ] Pre/post creation hooks
 - [ ] CI/CD pipeline templates (GitLab CI/GitHub Actions)
 
 ### Provider-Specific Features
+
 - [ ] GitLab API integration (advanced features)
 - [ ] GitHub API full integration
 - [ ] Team collaboration: add collaborators during creation
