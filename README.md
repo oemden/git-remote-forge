@@ -7,8 +7,8 @@ A tool to create and setup git projects locally and push them remotely on GitLab
 **v0.9.1 - Ready for Use (GitLab Only)**
 
 git-remote-forge has reached a stable state suitable for production use.
-The core workflow is tested and reliable: create local repositories, initialize branches by default (main, develop, production) localy, then push to GitLab with a single command. 
-GitHub, Bitbucket, and Gitea providers are in the roadmap but not yet implemented. 
+The core workflow is tested and reliable: create local repositories, initialize branches by default (main, develop, production) localy, then push to GitLab with a single command.
+GitHub, Bitbucket, and Gitea providers are in the roadmap but not yet implemented.
 If you use GitLab, this tool will save you time on repetitive setup tasks.
 
 For exemple:
@@ -17,23 +17,24 @@ create a local empty directory, set up git branches or use an existing directory
 
 - Start from scratch:
 
-```
+```bash
 gitremote -d my-noexisting-repo -n my_gitlab_namespace -R gitlab -B develop
 ```
 
 - Use an existing directory, on which you've started working locally:
 
+```bash
+gitremote -d /path/to/my-existing-repo -n my_gitlab_namespace -R gitlab -B develop -T "python"
 ```
-gitremote.sh -d /path/to/my-existing-repo -n my_gitlab_namespace -R gitlab -B develop -T "python"
-```
-
 
 ## Prerequisites
+
 - Git configured locally (`user.name` and `user.email`)
 - SSH key setup and configured for GitLab access
 - GitLab namespace (username or group name where the repository will be created)
 
 ## Branch Structure
+
 GIT REMOTE FORGE creates three default branches:
 
 - `main`: Primary branch for stable code
@@ -47,22 +48,18 @@ The script automatically:
 3. Propagates initial setup to all branches
 4. Checks out to develop branch by default
 
-
 You can specify a different branch to checkout using the `-B` option:
 
 `gitremote -d project_name -B production  # Creates all branches, checks out to production`
 
 - Default working branch is `develop` unless specified via `-B`
 
-
 ### Branch Management
 
 - All changes start on `main` branch
 - Changes are propagated to `production` and `develop`
 
-
 ## Installation
-
 
 ### Clone the repository
 
@@ -71,36 +68,32 @@ You can specify a different branch to checkout using the `-B` option:
 `cd git-remote-forge`
 
 ### Make the script executable
+
 `chmod +x gitremote.sh`
 
-### Optional: 
+### Optional
 
-**use install script**
+Use install script:
 
 `bash install.sh` will install git-remote-forge `gitremote.sh` to `/usr/local/bin/gitremote`
 
-or do it manually
-
-**Add to `/usr/local/bin/`**
+or manually add it to `/usr/local/bin/`:
 
 `cp gitremote.sh gitremote`
 
-or
-
-**Add to your PATH**
+or add it to your PATH:
 
 `sudo ln -s $(pwd)/gitremote /usr/local/bin/gitremote`
 
-##  Usage
+## Usage
 
-### Preview mode (default):
+### Preview mode (default)
 
 - `gitremote -d project_name -n my_gitlab_namespace -T "python,django"`
 
-### Force mode (no preview):
+### Force mode (no preview)
 
 - `gitremote -d project_name -n my_gitlab_namespace -f`
-
 
 ## Options
 
@@ -120,12 +113,12 @@ or
 When run without the `-f` flag, the script will:
 
 1. Display planned operations:
-	- Local repository setup details
-	- Remote repository configuration
-	- Branch operations
-	- Push operations
-	- Post-setup operations (if any)
 
-2. Prompt for confirmation before executing
-3. Only proceed if confirmed
+- Local repository setup details
+- Remote repository configuration
+- Branch operations
+- Push operations
+- Post-setup operations (if any)
 
+1. Prompt for confirmation before executing
+2. Only proceed if confirmed
