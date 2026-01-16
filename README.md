@@ -4,7 +4,7 @@ A tool to create and setup git projects locally and push them remotely on GitLab
 
 ## Status
 
-**v0.9.6 - Ready for Use (GitLab Only)**
+**v0.9.7 - Ready for Use (GitLab Only)**
 
 git-remote-forge has reached a stable state suitable for production use.
 The core workflow is tested and reliable: create local repositories, initialize branches by default (main, develop, production) locally, then push to GitLab with a single command.
@@ -241,6 +241,12 @@ gitremote -d my-project -n myusername -f
 
 ### Provider Options
 
+- `-P` : Provider selection (gitlab|github|bitbucket|gitea, default: gitlab)
+  - **Note: Currently only GitLab is fully supported. Other providers (github, bitbucket, gitea) are in development.**
+  - Example: `-P gitlab` (explicitly set provider to GitLab)
+  - When not specified, defaults to GitLab
+  - Invalid provider values will show an error and exit
+
 - `-S` : Self-hosted URL (optional, for self-hosted GitLab instances)
   - Example: `-S gitlab.example.com`
 
@@ -292,6 +298,9 @@ gitremote -d my-project -n myusername -r gitlab
 
 # Use existing directory with auto-detect technologies
 gitremote -n myusername -p /path/to/project -t
+
+# Explicitly specify provider (GitLab - currently only supported provider)
+gitremote -d my-project -n myusername -P gitlab
 
 # Force mode (skip confirmation)
 gitremote -d my-project -n myusername -f
@@ -374,3 +383,32 @@ Make sure git is configured:
 git config --global user.name "Your Name"
 git config --global user.email "your.email@example.com"
 ```
+
+### Tips
+
+Create aliases in your profile:
+
+I plan to add feature to use a config fileso that your prefered Provider and namespace are always set.
+until then, easiest way is to add export and aliases in your shell profile
+
+```bash
+# ===== GIT REMOTE FORGE =====
+# gitremoteforge - default Values
+export GITREMOTE_FORGE_NAMESPACE="my_gitlab_group"
+# export GITREMOTE_FORGE_PROVIDER="gitlab"
+
+# Create New Git repo from current directory
+alias grfcurrent='gitremote -n ${GITREMOTE_FORGE_NAMESPACE} -i -f'
+
+# Create New Git repo and new directory in current directory requires directory name as argument
+alias grfnew='gitremote -n ${GITREMOTE_FORGE_NAMESPACE} -i -d $1'
+
+```
+
+Now,
+
+1. Head into your Projects directory,
+   - type `grfnew my_new_repo` to create a New local directory and push it to your favorite Provider and namespace.
+
+2. Head into an existing Project directory with no .git initiated ( eg you use mkdir -p or created it in your Finder),
+   - type `grfcurrent` to create a New git repo in current local directory and push it to your favorite Provider and namespace.
