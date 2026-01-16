@@ -7,7 +7,7 @@
 #   - production: for production releases
 #   - develop: active development branch
 
-Version="0.9.5"
+Version="0.9.6"
 
 # Prerequisites:
 # - Git configured locally (user.name and user.email)
@@ -59,6 +59,8 @@ NC='\033[0m' # No Color
 
 # Function to display usage
 usage() {
+    echo "git-remote-forge - Repository Setup Script v${Version}"
+    echo "-----------------------------"
     echo "Usage: $0 [OPTIONS]"
     echo "Options:"
     echo "  -d    Local Directory/Project name (required for new repo)"
@@ -78,11 +80,12 @@ usage() {
     echo
     echo "Modes:"
     echo "  New Repository (inside current directory):       gitremote -d myproject -n myuser -T 'python,js'"
-    echo "  Existing Directory (using current directory):   gitremote -n myuser -t (auto-detect) or -T 'tech'"
-    echo "  Existing Directory (specific directory):  gitremote -p /path/to/dir -n myuser -t"
+    echo "  Existing Directory (using current directory):    gitremote -n myuser -t (auto-detect) or -T 'tech'"
+    echo "  Existing Directory (specific directory):         gitremote -p /path/to/dir -n myuser -t"
     echo
     echo "Default branches created: main, production, develop"
     echo "Default checkout: develop (unless -b specified)"
+    echo "-----------------------------"
     exit 1
 }
 
@@ -1416,6 +1419,12 @@ main() {
 
 # Parse command line arguments
 parse_arguments "$@"
+
+# If no arguments provided, show help and exit
+if [ $# -eq 0 ]; then
+    usage
+    exit 0
+fi
 
 # Start the script
 main "$@"

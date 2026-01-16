@@ -100,6 +100,7 @@
 - [x] `-O` Override any existing .git in existing target directory - user prompted twice for this DESTRUCTIVE operation ( usefull to duplicate a repo ) # ✅ COMPLETE (v0.9.4)
 - [x] `-R` Replace remote URL (prompts for confirmation if URL differs) # ✅ COMPLETE (v0.9.5)
 - [x] URL duplicate detection - prevent adding multiple remotes with same URL # ✅ COMPLETE (v0.9.5)
+- [x] Fix no-args behavior: display help/usage instead of prompting to create repo # ✅ COMPLETE (v0.9.6)
 
 ---
 
