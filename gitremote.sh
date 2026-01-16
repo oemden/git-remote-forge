@@ -7,7 +7,7 @@
 #   - production: for production releases
 #   - develop: active development branch
 
-Version="0.9.6"
+Version="0.9.7"
 
 # Prerequisites:
 # - Git configured locally (user.name and user.email)
@@ -74,6 +74,7 @@ usage() {
     echo "  -T    Technologies (user-provided, comma-separated, optional)"
     echo "  -b    Branch to checkout after creation (default: develop)"
     echo "  -p    Path to local directory (optional, for existing directory mode)"
+    echo "  -P    Provider (gitlab|github|bitbucket|gitea, default: gitlab)"
     echo "  -f    Force mode (skip dry-run and confirmation)"
     echo "  -O    Override existing .git directory (removes and reinitializes) - DESTRUCTIVE - Requires double confirmations even with -f flag"
     echo "  -h    Display this help message"
@@ -92,8 +93,8 @@ usage() {
 # Parse command line arguments
 # Handles all command-line flags and sets corresponding variables
 parse_arguments() {
-    # Current flags: d, n, t, T, B, S, p, r, R, i, O, f, h
-    while getopts "d:n:t:T:b:S:p:r:R:iOfh" opt; do
+    # Current flags: d, n, t, T, B, S, p, r, R, i, O, f, h, P
+    while getopts "d:n:t:T:b:S:p:r:R:iOfhP:" opt; do
         case ${opt} in
             d )
                 # Directory/Project name (creates new directory)
@@ -148,6 +149,23 @@ parse_arguments() {
                 # WARNING: This is a destructive operation that removes all branches and remotes
                 # ALWAYS requires two-step confirmation (even with -f flag) for safety
                 OVERRIDE_GIT=true
+                ;;
+            P )
+                # -P flag: Provider selection (gitlab|github|bitbucket|gitea)
+                # Sets the git provider to use for remote repository setup
+                # Default: gitlab (set at script initialization)
+                # Validates provider value and exits with error if invalid
+                local provider_value=$(echo "$OPTARG" | tr '[:upper:]' '[:lower:]')
+                case "$provider_value" in
+                    gitlab|github|bitbucket|gitea)
+                        PROVIDER="$provider_value"
+                        ;;
+                    *)
+                        echo "Error: Invalid provider '$OPTARG'. Supported providers: gitlab, github, bitbucket, gitea"
+                        usage
+                        exit 1
+                        ;;
+                esac
                 ;;
             : )
                 # Missing argument for option
@@ -694,7 +712,9 @@ setup_provider() {
             exit 1
             ;;
         gitea)
-            handle_gitea_setup "$target" "$self_hosted_url"
+            # TODO: handle_gitea_setup "$target" "$self_hosted_url"
+            echo "Error: Bitbucket support coming soon"
+            exit 1
             ;;
         *)
             echo "Error: Unknown provider: $provider"

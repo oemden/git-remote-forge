@@ -4,7 +4,7 @@ A tool to create and setup git projects locally and push them remotely on GitLab
 
 ## Status
 
-**v0.9.6 - Ready for Use (GitLab Only)**
+**v0.9.7 - Ready for Use (GitLab Only)**
 
 git-remote-forge has reached a stable state suitable for production use.
 The core workflow is tested and reliable: create local repositories, initialize branches by default (main, develop, production) locally, then push to GitLab with a single command.
@@ -239,7 +239,13 @@ gitremote -d my-project -n myusername -f
   - Example: `-T "python,django,postgresql"`
 - `-t` : Auto-detect technologies from existing files (flag, no argument)
 
-### Provider Options (TODO)
+### Provider Options
+
+- `-P` : Provider selection (gitlab|github|bitbucket|gitea, default: gitlab)
+  - **Note: Currently only GitLab is fully supported. Other providers (github, bitbucket, gitea) are in development.**
+  - Example: `-P gitlab` (explicitly set provider to GitLab)
+  - When not specified, defaults to GitLab
+  - Invalid provider values will show an error and exit
 
 - `-S` : Self-hosted URL (optional, for self-hosted GitLab instances)
   - Example: `-S gitlab.example.com`
@@ -292,6 +298,9 @@ gitremote -d my-project -n myusername -r gitlab
 
 # Use existing directory with auto-detect technologies
 gitremote -n myusername -p /path/to/project -t
+
+# Explicitly specify provider (GitLab - currently only supported provider)
+gitremote -d my-project -n myusername -P gitlab
 
 # Force mode (skip confirmation)
 gitremote -d my-project -n myusername -f

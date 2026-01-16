@@ -2,6 +2,23 @@
 
 All notable changes to git-remote-forge are documented here.
 
+## [0.9.7] - 2026-01-XX
+
+### Added
+- `-P` flag for provider selection (gitlab|github|bitbucket|gitea, default: gitlab)
+- Provider validation with error handling for invalid provider values
+- Case-insensitive provider value matching
+
+### Changed
+- Provider option now accepts command-line argument (prepares for multi-provider support)
+- Default provider remains GitLab when `-P` is not specified
+
+### Note
+- Currently only GitLab provider is fully functional
+- GitHub, Bitbucket, and Gitea providers are in development
+
+---
+
 ## [0.9.6] - 2026-01-XX
 
 ### Fixed

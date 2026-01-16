@@ -15,7 +15,7 @@
 -d, --dir          Project directory/name (required for new repo)
 -c, --current      Project directory/name (required for new repo) from current Directory. ( no -d), same as -p
 -n, --namespace    Namespace/username (target on provider)
-# -P, --repo-provider Provider: (gitlab|github|bitbucket|gitea) (default: gitlab)
+-P, --provider     Provider: (gitlab|github|bitbucket|gitea) (default: gitlab) # ✅ COMPLETE (v0.9.7)
 -S, --self-hosted  Self-hosted URL (optional, for self-hosted instances gitlab|gitea)
 -t                 Auto-detect technologies (existing directory mode only)
 -T, --tech         Technologies (user-provided, comma-separated, optional)
@@ -101,6 +101,7 @@
 - [x] `-R` Replace remote URL (prompts for confirmation if URL differs) # ✅ COMPLETE (v0.9.5)
 - [x] URL duplicate detection - prevent adding multiple remotes with same URL # ✅ COMPLETE (v0.9.5)
 - [x] Fix no-args behavior: display help/usage instead of prompting to create repo # ✅ COMPLETE (v0.9.6)
+- [x] `-P` Provider selection option (gitlab|github|bitbucket|gitea, default: gitlab) # ✅ COMPLETE (v0.9.7)
 
 ---
 

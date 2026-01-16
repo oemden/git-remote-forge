@@ -3,7 +3,7 @@
 # A Bash script to install gitremote.sh.
 # Will be installed in /usr/local/bin/gitremote
 
-VERSION="0.9.6"
+VERSION="0.9.7"
 INSTALL_PATH="/usr/local/bin/gitremote"
 SCRIPT_SOURCE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/gitremote.sh"
 
