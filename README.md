@@ -239,7 +239,7 @@ gitremote -d my-project -n myusername -f
   - Example: `-T "python,django,postgresql"`
 - `-t` : Auto-detect technologies from existing files (flag, no argument)
 
-### Provider Options
+### Provider Options (TODO)
 
 - `-S` : Self-hosted URL (optional, for self-hosted GitLab instances)
   - Example: `-S gitlab.example.com`
@@ -374,3 +374,32 @@ Make sure git is configured:
 git config --global user.name "Your Name"
 git config --global user.email "your.email@example.com"
 ```
+
+### Tips
+
+Create aliases in your profile:
+
+I plan to add feature to use a config fileso that your prefered Provider and namespace are always set.
+until then, easiest way is to add export and aliases in your shell profile
+
+```bash
+# ===== GIT REMOTE FORGE =====
+# gitremoteforge - default Values
+export GITREMOTE_FORGE_NAMESPACE="my_gitlab_group"
+# export GITREMOTE_FORGE_PROVIDER="gitlab"
+
+# Create New Git repo from current directory
+alias grfcurrent='gitremote -n ${GITREMOTE_FORGE_NAMESPACE} -i -f'
+
+# Create New Git repo and new directory in current directory requires directory name as argument
+alias grfnew='gitremote -n ${GITREMOTE_FORGE_NAMESPACE} -i -d $1'
+
+```
+
+Now,
+
+1. Head into your Projects directory,
+   - type `grfnew my_new_repo` to create a New local directory and push it to your favorite Provider and namespace.
+
+2. Head into an existing Project directory with no .git initiated ( eg you use mkdir -p or created it in your Finder),
+   - type `grfcurrent` to create a New git repo in current local directory and push it to your favorite Provider and namespace.
