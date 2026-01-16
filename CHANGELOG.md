@@ -2,6 +2,69 @@
 
 All notable changes to git-remote-forge are documented here.
 
+## [0.9.6] - 2026-01-XX
+
+### Fixed
+- No arguments now displays help/usage message instead of prompting to create repository
+- `gitremote.sh` (no args) now behaves the same as `gitremote.sh -h`
+
+---
+
+## [0.9.5] - 2026-01-16
+
+### Added
+- `-R` flag for replacing/renaming remotes with same URL
+- URL duplicate detection to prevent multiple remotes with same URL
+- Helper functions: `check_remote_url_exists()`, `get_remote_url()`, `prompt_replace_remote()`
+- User prompts for replace/keep/abort when remote URL differs
+
+### Fixed
+- Prevent `-r` flag from creating duplicate remotes with same URL
+- Clearer error messages with options including `-R` flag usage
+
+### Changed
+- Updated documentation with new use cases and examples for remote management
+
+---
+
+## [0.9.4] - 2026-01-16
+
+### Added
+- `-i` flag to create basic .gitignore file with default patterns (.*env, !.env.example, .repo_initiated_by_gitremoteforge)
+- `-O` flag to override existing .git directory (removes and reinitializes)
+- Repository marker file `.repo_initiated_by_gitremoteforge` with version tracking
+- Two-step confirmation for destructive .git removal (even with `-f` flag)
+
+### Changed
+- Enhanced remote conflict handling with clearer messaging
+
+---
+
+## [0.9.3] - 2026-01-15
+
+### Fixed
+- Git init flow: create .git folder only after user approval or `-f` flag
+- Prevents .git creation before preview and confirmation
+
+---
+
+## [0.9.2] - 2026-01-15
+
+### Added
+- `-r` flag for custom remote names (default: origin)
+- Default current directory behavior when no `-d` or `-p` provided
+- Comprehensive code comments throughout script
+
+### Fixed
+- `normalize_path()` macOS compatibility (realpath doesn't support `-m` flag)
+- Path existence check before calling realpath on macOS
+
+### Changed
+- Changed branch checkout flag from `-B` to `-b`
+- Updated README with comprehensive use cases and examples
+
+---
+
 ## [0.9.1] - 2025-11-29
 
 ### Fixed
