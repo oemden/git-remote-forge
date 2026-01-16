@@ -2,13 +2,12 @@
 
 - `-K` --keep          Keep existing files eg: README.md, .gitignore
 - Create a .repo_initiated_by_gitremoteforge ( with gitremote versionn, add to .gitignore if exist)
-- `-o`, --remote-name  Set Remote Name ( default: origin ) # TODO
-- `-i`, --gitignore    Create basic std .gitignore file ( default: .*env, !.env.example, .repo_init_by_gitremoteforge) #TODO
 - `-I`,                Specify what to add to .gitignore ? #TODO
 - `--version`                 Display git-remote-forge version
 - `-v`                 show git remote(s) in current dir `git remote -v` ( detect if `$PWD` is a git repo)
 - `-R`                 add other remote -> origin vs secondary etc... ( should be runned in second step, would require -n,-R,-S, -p (optionnal) )
-- `-O`                 Override any existing .git in existing target directory
+- `-k`                 DELETE online Repo, Require user confirmation.
+- `-K`                 DELETE immediatly online repo ( eg: gitlab has a 2 step process, renaming the repo to something like ny_namespace/my_repo-deletion_scheduled-77729851 ) - check API if deletion can be done in 1 step. Require 2 times user confirmation with BIG WARNINGS.
 
 ## Parameter Strategy
 
@@ -16,13 +15,13 @@
 -d, --dir          Project directory/name (required for new repo)
 -c, --current      Project directory/name (required for new repo) from current Directory. ( no -d), same as -p
 -n, --namespace    Namespace/username (target on provider)
--P, --repo-provider Provider: (gitlab|github|bitbucket|gitea) (default: gitlab)
+# -P, --repo-provider Provider: (gitlab|github|bitbucket|gitea) (default: gitlab)
 -S, --self-hosted  Self-hosted URL (optional, for self-hosted instances gitlab|gitea)
 -t                 Auto-detect technologies (existing directory mode only)
 -T, --tech         Technologies (user-provided, comma-separated, optional)
 -b, --branch       Checkout branch after creation (default: develop)
--B, --branches       Add / Override  specific custom branches (other than develop|main|production)
--r, --remote-name  Set Remote Name ( default: origin ) # TODO
+-B, --branches       Add / Override  specific custom branches (other than develop|main|production) # TODO
+-r, --remote-name  Set Remote Name ( default: origin ) # ✅ COMPLETE (v0.9.2) -> for future Use
 -R, --add-remote-name  Add secondary Remote Name ( should be runned in second step, would require -n,-o, -O,-S, -p (optionnal) ) # TODO ?
 -i, --gitignore    Create basic std gitignore file ( default: .*env, !.env.example, .repo_init_by_gitremoteforge) #TODO
 -I,                Specify what to add to .gitignore ? #TODO
@@ -67,7 +66,7 @@
 - [x] Add provider routing (setup_provider function)
 - [x] Add handle_gitea_setup() adapter
 
-### Phase 2: Existing Directory Support (v0.9.0-0.9.1) ✅ COMPLETE
+### Phase 2: Existing Directory Support (v0.9.0-0.9.3) ✅ COMPLETE
 
 - [x] `local_directory()` - manage dir creation/detection
 - [x] `manage_git()` - detect or initialize git repos
@@ -86,6 +85,19 @@
 - [x] Display full path in output (v0.9.1)
 - [x] Detect git push failures, exit with error code (v0.9.1)
 - [x] Early abort on first push failure (v0.9.1)
+- [x] Fix macOS realpath compatibility (v0.9.2) - check path existence before calling realpath
+- [x] Add default current directory behavior when no -d/-p (v0.9.2)
+- [x] Add -r flag for custom remote names (v0.9.2)
+- [x] Change branch checkout flag from -B to -b (v0.9.2)
+- [x] Update README with comprehensive use cases (v0.9.2)
+- [x] Add comprehensive code comments (v0.9.2)
+- [x] Defer git init until after user confirmation (v0.9.3) - prevents .git creation before preview
+
+- ### Phase 2: Existing Directory Support (v0.9.4) ✅ COMPLETE
+
+- [x] `-r`, --remote-name  Set Remote Name ( default: origin ) # TODO
+- [x] `-i`, --gitignore    Create basic std .gitignore file ( default: .*env, !.env.example, .repo_init_by_gitremoteforge) #TODO
+- [x] `-O` Override any existing .git in existing target directory - user prompted twice for this DESTRUCTIVE operation ( usefull to duplicate a repo )
 
 ---
 
@@ -103,6 +115,7 @@
 
 ### Setup Validation & Error Handling
 
+- [x] Defer git init until after user confirmation (v0.9.3) - prevents .git creation before preview
 - [ ] Validate remote created before success message
 - [ ] Check remote repo exists on provider before push (Phase 3)
 - [ ] Provide clear error messages with troubleshooting steps

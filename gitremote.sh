@@ -7,7 +7,7 @@
 #   - production: for production releases
 #   - develop: active development branch
 
-Version="0.9.3"
+Version="0.9.4"
 
 # Prerequisites:
 # - Git configured locally (user.name and user.email)
@@ -37,6 +37,15 @@ SELF_HOSTED_URL=""
 REMOTE_NAME="origin"
 NEW_REMOTE_NAME=""
 OVERRIDE_REMOTE=false
+# Flag: Create .gitignore file when -i flag is used
+# When true, creates .gitignore with default patterns and repository marker file
+CREATE_GITIGNORE=false
+# Flag: Override existing .git directory when -O flag is used
+# When true, removes existing .git and reinitializes repository (destructive operation)
+OVERRIDE_GIT=false
+# Flag: Remote exists check is pending (deferred until after provider setup)
+# When true, need to verify remote URL matches after setup_provider sets REMOTE_URL
+REMOTE_EXISTS_CHECK_PENDING=false
 
 # Colors for output
 RED='\033[0;31m'
@@ -52,15 +61,16 @@ usage() {
     echo "  -d    Local Directory/Project name (required for new repo)"
     echo "  -n    Namespace - for Gitlab /username - for GitHub (target on provider)"
     echo "  -r    Set custom remote name (default: origin)"
+    echo "  -i    Create basic .gitignore file (default: .*env, !.env.example, .repo_initiated_by_gitremoteforge)"
     # TODO: Future features (commented out for now)
     # echo "  -R    Add new remote name (keeps existing remotes) - Future: multi-provider support"
-    # echo "  -O    Override existing remote - Future: remote override support"
     # echo "  -S    Self-hosted URL (optional, for self-hosted providers)"
     echo "  -t    Auto-detect technologies (existing directory mode)"
     echo "  -T    Technologies (user-provided, comma-separated, optional)"
     echo "  -b    Branch to checkout after creation (default: develop)"
     echo "  -p    Path to local directory (optional, for existing directory mode)"
     echo "  -f    Force mode (skip dry-run and confirmation)"
+    echo "  -O    Override existing .git directory (removes and reinitializes) - DESTRUCTIVE - Requires double confirmations even with -f flag"
     echo "  -h    Display this help message"
     echo
     echo "Modes:"
@@ -76,10 +86,9 @@ usage() {
 # Parse command line arguments
 # Handles all command-line flags and sets corresponding variables
 parse_arguments() {
-    # Current flags: d, n, t, T, B, S, p, r, f, h
-    # TODO: Future flags -R and -O commented out for multi-remote support
-    while getopts "d:n:t:T:b:S:p:r:fh" opt; do
-    # Future: while getopts "d:n:t:T:R:B:S:p:r:Ofh" opt; do
+    # Current flags: d, n, t, T, B, S, p, r, i, O, f, h
+    # TODO: Future flags -R commented out for multi-remote support
+    while getopts "d:n:t:T:b:S:p:r:iOfh" opt; do
         case ${opt} in
             d )
                 # Directory/Project name (creates new directory)
@@ -120,11 +129,21 @@ parse_arguments() {
                 # Example: -r gitlab (uses "gitlab" instead of "origin")
                 REMOTE_NAME=$OPTARG
                 ;;
-            # TODO: Future feature - Override existing remote
-            # O )
-            #     # Override existing remote (use with -r to override without prompt)
-            #     OVERRIDE_REMOTE=true
-            #     ;;
+            i )
+                # -i flag: Create basic .gitignore file
+                # Sets flag to create .gitignore with default patterns:
+                #   - .*env (all environment files)
+                #   - !.env.example (exception: keep .env.example)
+                #   - .repo_initiated_by_gitremoteforge (repository marker)
+                CREATE_GITIGNORE=true
+                ;;
+            O )
+                # -O flag: Override existing .git directory
+                # Sets flag to remove and reinitialize .git when conflicts are detected
+                # WARNING: This is a destructive operation that removes all branches and remotes
+                # ALWAYS requires two-step confirmation (even with -f flag) for safety
+                OVERRIDE_GIT=true
+                ;;
             : )
                 # Missing argument for option
                 echo "Error: Option -$OPTARG requires an argument"
@@ -372,6 +391,49 @@ handle_gitea_setup() {
     # TODO: implement handle_gitea_setup
 }
 
+# Function to create .gitignore file and repository marker
+# Called when -i flag is used to automatically set up standard gitignore patterns
+# Parameters:
+#   $1: target_path - Directory where .gitignore should be created
+create_gitignore() {
+    local target_path="$1"
+    
+    cd "$target_path"
+    
+    # Step 1: Create repository marker file
+    # This file tracks that the repository was initialized by git-remote-forge
+    # Contains version information for tracking purposes
+    if [ ! -f ".repo_initiated_by_gitremoteforge" ]; then
+        echo "gitremoteforge version = ${Version}" > .repo_initiated_by_gitremoteforge
+        echo -e "${GREEN}✓ Created repository marker file${NC}"
+    fi
+    
+    # Step 2: Create .gitignore file (only if it doesn't exist)
+    if [ ! -f ".gitignore" ]; then
+        # .gitignore doesn't exist - create new file with default patterns
+        # Default patterns include:
+        #   - Repository marker (to ignore the marker file itself)
+        #   - All .env files (.*env matches .env, .env.local, .env.production, etc.)
+        #   - Exception for .env.example (keep it as a template)
+        cat > .gitignore << EOL
+# Repository marker
+.repo_initiated_by_gitremoteforge
+
+# Environment files
+.*env
+!.env.example
+EOL
+        echo -e "${GREEN}✓ Created .gitignore file${NC}"
+        return 0  # Success - created new file
+    else
+        # .gitignore already exists - inform user and keep existing file
+        # We don't override existing .gitignore to avoid unintended consequences
+        echo -e "${YELLOW}⚠ .gitignore already exists${NC}"
+        echo -e "${BLUE}Keeping existing .gitignore file (no override)${NC}"
+        return 1  # Indicate file already exists
+    fi
+}
+
 # Function to preview operations
 preview_operations() {
     local dir_name="$1"
@@ -385,11 +447,23 @@ preview_operations() {
     # Directory creation
     echo -e "\n${GREEN}1. Local Repository Setup:${NC}"
     echo -e "   • Create directory: ${BLUE}$dir_name${NC}"
-    echo -e "   • Initialize git repository"
+    # Show override warning if -O flag is used
+    # This alerts user that existing .git will be removed (destructive operation)
+    if [ "$OVERRIDE_GIT" = true ]; then
+        echo -e "   • ${YELLOW}⚠ Override existing .git directory (will remove and reinitialize)${NC}"
+    else
+        echo -e "   • Initialize git repository"
+    fi
     echo -e "   • Create and commit README.md with:"
     echo -e "     - Project name: ${BLUE}$dir_name${NC}"
     echo -e "     - Contributor: ${BLUE}$contributor${NC}"
     [[ ! -z "$technologies" ]] && echo -e "     - Technologies: ${BLUE}$technologies${NC}"
+    # Show .gitignore creation in preview if -i flag is used
+    # This helps user understand what will be created before confirmation
+    if [ "$CREATE_GITIGNORE" = true ]; then
+        echo -e "   • Create .gitignore file with default patterns"
+        echo -e "   • Create .repo_initiated_by_gitremoteforge marker file"
+    fi
 
     # Remote operations
     echo -e "\n${GREEN}2. Remote Repository Setup:${NC}"
@@ -459,8 +533,20 @@ $technologies
 EOL
     fi
 
-    # Initial commit on main
+    # Create .gitignore and repository marker if -i flag is set
+    # This is done before the initial commit so they can be included in the first commit
+    if [ "$CREATE_GITIGNORE" = true ]; then
+        create_gitignore "$target_path"
+    fi
+
+    # Initial commit on main branch
+    # Add README.md first (always created)
     git add README.md
+    # If .gitignore was created, add it and the marker file to the commit
+    # Use 2>/dev/null || true to handle case where files might not exist (defensive coding)
+    if [ "$CREATE_GITIGNORE" = true ]; then
+        git add .gitignore .repo_initiated_by_gitremoteforge 2>/dev/null || true
+    fi
     git commit -m "Initial commit: Add README.md"
 }
 
@@ -731,6 +817,108 @@ local_directory() {
     LOCAL_TARGET="$target_path"
 }
 
+# Function to handle two-step confirmation for destructive .git removal
+# This function strongly discourages the user and requires explicit confirmation
+# Parameters:
+#   $1: context_message - Additional context about what will be lost (e.g., "Multiple remotes detected")
+# Returns:
+#   0 (success) - User confirmed both steps, proceed with .git removal
+#   1 (failure) - User chose "keep", abort operation
+#   Exits with 0 - User chose "abort" or invalid input, operation cancelled
+# Usage:
+#   if ! confirm_destructive_git_removal "$context_msg"; then
+#       exit 0  # User chose "keep"
+#   fi
+#   # User confirmed, proceed with removal
+confirm_destructive_git_removal() {
+    local context_message="$1"
+    
+    # Step 1: First warning and confirmation
+    echo
+    echo -e "${RED}═══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${RED}  ⚠⚠⚠  DESTRUCTIVE OPERATION WARNING  ⚠⚠⚠${NC}"
+    echo -e "${RED}═══════════════════════════════════════════════════════════════${NC}"
+    echo
+    echo -e "${RED}This operation will PERMANENTLY DELETE the .git directory!${NC}"
+    echo -e "${RED}This is a NO-RETURN operation - you CANNOT undo this action!${NC}"
+    echo
+    echo -e "${YELLOW}What will be LOST FOREVER:${NC}"
+    echo -e "  • All git history and commits"
+    echo -e "  • All branches (main, develop, production, etc.)"
+    echo -e "  • All remotes and remote configurations"
+    echo -e "  • All tags and references"
+    echo -e "  • All stashed changes"
+    echo
+    if [ -n "$context_message" ]; then
+        echo -e "${YELLOW}Context: ${context_message}${NC}"
+        echo
+    fi
+    echo -e "${RED}Are you ABSOLUTELY SURE you want to proceed?${NC}"
+    echo -e "${YELLOW}Type 'yes' to continue, or anything else to see options:${NC}"
+    read -r first_response
+    
+    # If user doesn't type "yes", show options
+    if [[ ! "$first_response" =~ ^[Yy][Ee][Ss]$ ]]; then
+        echo
+        echo -e "${YELLOW}Options:${NC}"
+        echo -e "  ${GREEN}reset${NC}     - Remove .git and reinitialize (destructive)"
+        echo -e "  ${BLUE}keep${NC}      - Keep existing .git directory (safe)"
+        echo -e "  ${RED}abort${NC}     - Abort operation and exit"
+        echo -e "  ${YELLOW}think${NC}    - Let me think about it (same as abort)"
+        echo
+        echo -e "${YELLOW}Your choice [reset/keep/abort/think]:${NC}"
+        read -r choice
+        case "$choice" in
+            reset)
+                # User explicitly chose reset, proceed to second confirmation
+                ;;
+            keep)
+                echo -e "${GREEN}Keeping existing .git directory${NC}"
+                return 1  # Return non-zero to indicate "keep"
+                ;;
+            abort|think|"")
+                echo -e "${YELLOW}Operation cancelled. No changes made.${NC}"
+                exit 0
+                ;;
+            *)
+                echo -e "${YELLOW}Invalid choice. Operation cancelled for safety.${NC}"
+                exit 0
+                ;;
+        esac
+    fi
+    
+    # Step 2: Second confirmation (even stronger warning)
+    echo
+    echo -e "${RED}═══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${RED}  ⚠⚠⚠  FINAL WARNING - NO RETURN  ⚠⚠⚠${NC}"
+    echo -e "${RED}═══════════════════════════════════════════════════════════════${NC}"
+    echo
+    echo -e "${RED}You are about to PERMANENTLY DELETE all git history!${NC}"
+    echo -e "${RED}This CANNOT be undone. There is NO way to recover this data!${NC}"
+    echo
+    echo -e "${YELLOW}Are you REALLY, REALLY SURE?${NC}"
+    echo -e "${RED}Type 'YES I AM SURE' (exactly, with spaces) to proceed, or anything else to abort:${NC}"
+    read -r second_response
+    
+    # Require exact match for final confirmation (case-insensitive but must match words exactly)
+    # Normalize the response: convert to uppercase and trim leading/trailing whitespace
+    # Use bash parameter expansion to trim whitespace (more portable than xargs)
+    local normalized_response=$(echo "$second_response" | tr '[:lower:]' '[:upper:]')
+    normalized_response="${normalized_response#"${normalized_response%%[![:space:]]*}"}"  # Trim leading
+    normalized_response="${normalized_response%"${normalized_response##*[![:space:]]}"}"  # Trim trailing
+    
+    if [ "$normalized_response" = "YES I AM SURE" ]; then
+        echo
+        echo -e "${RED}Final confirmation received. Proceeding with destructive operation...${NC}"
+        return 0  # Return zero to indicate "reset" confirmed
+    else
+        echo
+        echo -e "${GREEN}Operation cancelled. Your .git directory is safe.${NC}"
+        echo -e "${YELLOW}No changes were made.${NC}"
+        exit 0
+    fi
+}
+
 # Manage git repository (detect or initialize)
 # Handles git repository detection and remote conflict resolution
 # Scenarios:
@@ -745,6 +933,75 @@ manage_git() {
     # Check if .git exists
     if [ -d ".git" ]; then
         echo -e "${BLUE}Existing Git repository detected${NC}"
+        
+        # PRIORITY: If -O flag is set, check conditions and prompt for confirmation FIRST
+        # This must happen IMMEDIATELY, before any other operations, previews, or standard confirmations
+        # Even before checking remotes in detail - user must confirm destruction first
+        if [ "$OVERRIDE_GIT" = true ]; then
+            # Check what will be lost (remotes and branches)
+            local remote_count=$(git remote | wc -l)
+            local existing_remote=$(git remote | head -n1 2>/dev/null || echo "")
+            local branches=$(get_local_branches "." 2>/dev/null || echo "")
+            
+            # Determine what will be lost and build context message
+            local context_msg=""
+            local needs_confirmation=false
+            
+            if [ "$remote_count" -gt 1 ]; then
+                # Multiple remotes - show them and branches
+                echo -e "${YELLOW}⚠ Multiple remotes detected:${NC}"
+                git remote -v
+                echo
+                if [ -n "$branches" ]; then
+                    echo -e "${YELLOW}⚠ Existing branches that will be lost:${NC}"
+                    echo "$branches"
+                    echo
+                fi
+                context_msg="Multiple remotes detected. All remotes and branches will be lost."
+                needs_confirmation=true
+            elif [ "$remote_count" -eq 1 ] && [ "$existing_remote" = "$REMOTE_NAME" ]; then
+                # Single remote with matching name - show remote and branches
+                echo -e "${YELLOW}⚠ Remote '${REMOTE_NAME}' already configured:${NC}"
+                git remote -v
+                echo
+                if [ -n "$branches" ]; then
+                    echo -e "${YELLOW}⚠ Existing branches that will be lost:${NC}"
+                    echo "$branches"
+                    echo
+                fi
+                context_msg="Remote '${REMOTE_NAME}' already configured. All remotes and branches will be lost."
+                needs_confirmation=true
+            elif [ -n "$branches" ]; then
+                # Branches exist but no remote conflicts
+                echo -e "${YELLOW}⚠ Existing branches detected:${NC}"
+                echo "$branches"
+                echo
+                context_msg="Existing branches detected. All branches and git history will be lost."
+                needs_confirmation=true
+            fi
+            
+            # If conditions require confirmation, prompt NOW (before any other operations)
+            if [ "$needs_confirmation" = true ]; then
+                # Require two-step confirmation - ALWAYS required for -O flag (safety first)
+                # This happens FIRST, before preview or any other operations
+                # Even with -f flag, this confirmation cannot be bypassed
+                if ! confirm_destructive_git_removal "$context_msg"; then
+                    # User chose "keep" - exit without removing .git
+                    exit 0
+                fi
+                # User confirmed both steps - proceed with removal
+                echo -e "${BLUE}Removing existing .git directory...${NC}"
+                rm -rf .git
+                DEFER_GIT_INIT_AFTER_APPROVAL=true
+                IS_EXISTING_REPO=false
+                echo -e "${GREEN}✓ .git directory removed - will reinitialize${NC}"
+                # Return early - .git is removed, normal flow will continue in main()
+                return 0
+            fi
+        fi
+        
+        # If we reach here, either -O was not set, or .git was already removed above
+        # Continue with normal git repository detection
         DEFER_GIT_INIT_AFTER_APPROVAL=false  # No need to defer, repo already exists
         
         # Check remotes and handle scenarios
@@ -779,45 +1036,73 @@ manage_git() {
         #     fi
         
         # Current behavior: Check for conflicts with existing remotes
+        # Handle three scenarios: multiple remotes, single remote conflict, or no conflict
+        # Note: If -O flag was set, confirmation already happened above and .git was removed
+        # So we only reach here if -O was not set or if .git was already removed
         if [ "$remote_count" -gt 1 ]; then
-            # Scenario: Multiple remotes detected
-            echo -e "${RED}✗ Multiple remotes detected${NC}"
-            git remote -v
-            echo
-            echo -e "${YELLOW}git-remote-forge operates on '${REMOTE_NAME}' only${NC}"
-            echo -e "${YELLOW}Options:${NC}"
-            echo "  1. Rename other remotes: git remote rename <n> <new-name>"
-            echo "  2. Remove extra remotes: git remote remove <n>"
-            echo "  3. Manage this repo manually outside gitremote"
-            exit 1
-        elif [ "$remote_count" -eq 1 ]; then
-            # Scenario: Single remote exists
-            if [ "$existing_remote" = "$REMOTE_NAME" ]; then
-                # The remote we want to use already exists
-                echo -e "${RED}✗ Remote '${REMOTE_NAME}' already configured${NC}"
-                echo -e "${BLUE}Current remote:${NC}"
+            # Scenario 1: Multiple remotes detected
+            # git-remote-forge only works with a single remote, so this is a conflict
+            # If we reach here with -O flag, it means .git was already removed above
+            if [ "$OVERRIDE_GIT" = true ] && [ ! -d ".git" ]; then
+                # .git was already removed above, continue normally
+                :
+            else
+                # -O flag not set: Exit with error and show options
+                # This is the safe default behavior - don't destroy data without explicit flag
+                echo -e "${RED}✗ Multiple remotes detected${NC}"
                 git remote -v
                 echo
+                echo -e "${YELLOW}git-remote-forge operates on '${REMOTE_NAME}' only${NC}"
                 echo -e "${YELLOW}Options:${NC}"
-                echo "  1. Change remote URL: git remote set-url ${REMOTE_NAME} <new-url>"
-                echo "  2. Remove remote: git remote remove ${REMOTE_NAME}"
-                echo "  3. Use -r <name> to specify a different remote name"
+                echo "  1. Rename other remotes: git remote rename <n> <new-name>"
+                echo "  2. Remove extra remotes: git remote remove <n>"
+                echo "  3. Use -O flag to override and reinitialize (removes .git)"
                 echo "  4. Manage this repo manually outside gitremote"
                 exit 1
+            fi
+        elif [ "$remote_count" -eq 1 ]; then
+            # Scenario 2: Single remote exists
+            if [ "$existing_remote" = "$REMOTE_NAME" ]; then
+                # The remote name we want to use already exists
+                # We'll check if the URL matches after setup_provider() sets REMOTE_URL
+                # This allows operations like creating .gitignore even if remote already exists
+                # If -O flag was set, confirmation already happened above and .git was removed
+                if [ "$OVERRIDE_GIT" = true ] && [ ! -d ".git" ]; then
+                    # .git was already removed above, continue normally
+                    :
+                else
+                    # -O flag not set: Remote exists, but we'll check URL match later
+                    # Don't exit here - allow operation to continue (user might only want .gitignore)
+                    # URL validation happens in main() after setup_provider if remote setup is needed
+                    REMOTE_EXISTS_CHECK_PENDING=true
+                fi
             else
-                # Different remote name exists, but we want to use REMOTE_NAME
-                # This is OK - we'll add the new remote with the specified name
+                # No conflict: Different remote name exists, but we want to use REMOTE_NAME
+                # This is OK - we can add a new remote with the specified name alongside the existing one
+                # git-remote-forge will work with REMOTE_NAME, existing remote is left untouched
                 echo -e "${YELLOW}Remote '${existing_remote}' exists, will use '${REMOTE_NAME}'${NC}"
             fi
         fi
         # else: No remotes - continue (OK, will add remote)
         
         # Check if repo has branches to determine if it's truly an existing repo
+        # This handles the case where there are no remote conflicts but branches exist
+        # If -O flag was set, confirmation already happened above and .git was removed
         if has_branches "."; then
-            IS_EXISTING_REPO=true
-            echo -e "${GREEN}✓ Existing branches detected${NC}"
+            # Scenario 3: Branches exist but no remote conflicts (or conflicts already handled above)
+            # If -O flag was set and .git was already removed above, just continue
+            if [ "$OVERRIDE_GIT" = true ] && [ ! -d ".git" ]; then
+                # .git was already removed above, continue normally
+                :
+            else
+                # -O flag not set, or already handled remote conflict above
+                # Treat as existing repository and continue normally
+                IS_EXISTING_REPO=true
+                echo -e "${GREEN}✓ Existing branches detected${NC}"
+            fi
         else
-            # Empty .git directory - treat as new repo
+            # No branches detected: Empty .git directory (git init but no commits)
+            # Treat as new repository - no override needed
             echo -e "${YELLOW}No branches detected - will initialize as new${NC}"
         fi
     else
@@ -872,7 +1157,50 @@ main() {
     REPO_NAME="$DIRECTORY_NAME"
 
     # Step 3: Setup provider with self-hosted URL if provided
-    setup_provider "$PROVIDER" "$TARGET" "$SELF_HOSTED_URL"
+    # Note: We set up provider even if only creating .gitignore, but we'll handle remote conflicts gracefully
+    if [ -n "$TARGET" ]; then
+        setup_provider "$PROVIDER" "$TARGET" "$SELF_HOSTED_URL"
+        
+        # Check if remote exists and URL matches (deferred from manage_git)
+        # If user only wants .gitignore, we allow operation to continue even with remote conflicts
+        if [ "$REMOTE_EXISTS_CHECK_PENDING" = true ]; then
+            cd "$LOCAL_TARGET"
+            local existing_remote_url=$(git remote get-url "$REMOTE_NAME" 2>/dev/null)
+            if [ -n "$existing_remote_url" ] && [ "$existing_remote_url" = "$REMOTE_URL" ]; then
+                # Remote exists and URL matches - this is fine, just skip adding remote
+                echo -e "${GREEN}✓ Remote '${REMOTE_NAME}' already configured with matching URL${NC}"
+                echo -e "${BLUE}  ${existing_remote_url}${NC}"
+                echo -e "${BLUE}  Skipping remote setup, continuing with other operations...${NC}"
+                REMOTE_EXISTS_CHECK_PENDING=false
+            elif [ -n "$existing_remote_url" ]; then
+                # Remote exists but URL doesn't match
+                # If user only wants .gitignore, warn but continue; otherwise show error
+                if [ "$CREATE_GITIGNORE" = true ] && [ "$IS_EXISTING_REPO" = true ]; then
+                    # User wants .gitignore on existing repo - warn but continue
+                    echo -e "${YELLOW}⚠ Remote '${REMOTE_NAME}' exists with different URL${NC}"
+                    echo -e "${BLUE}Current: ${existing_remote_url}${NC}"
+                    echo -e "${BLUE}Would create: ${REMOTE_URL}${NC}"
+                    echo -e "${YELLOW}Continuing with .gitignore creation (remote setup skipped)${NC}"
+                    REMOTE_EXISTS_CHECK_PENDING=false
+                else
+                    # Need remote setup - show error
+                    echo -e "${RED}✗ Remote '${REMOTE_NAME}' already configured with different URL${NC}"
+                    echo -e "${BLUE}Current remote:${NC}"
+                    git remote -v
+                    echo -e "${BLUE}Would create:${NC}"
+                    echo -e "  ${REMOTE_NAME}  ${REMOTE_URL}"
+                    echo
+                    echo -e "${YELLOW}Options:${NC}"
+                    echo "  1. Change remote URL: git remote set-url ${REMOTE_NAME} ${REMOTE_URL}"
+                    echo "  2. Remove remote: git remote remove ${REMOTE_NAME}"
+                    echo "  3. Use -r <name> to specify a different remote name"
+                    echo "  4. Use -O flag to override and reinitialize (removes .git)"
+                    echo "  5. Manage this repo manually outside gitremote"
+                    exit 1
+                fi
+            fi
+        fi
+    fi
 
     echo -e "\nStarting repository setup..."
 
@@ -882,10 +1210,25 @@ main() {
     fi
     
     # Initialize git repository if deferred (after user confirmation)
+    # This happens when:
+    #   - New repository (no .git directory existed)
+    #   - Repository was overridden with -O flag (removed and needs reinit)
     if [ "$DEFER_GIT_INIT_AFTER_APPROVAL" = true ]; then
         echo -e "${BLUE}Initializing new Git repository${NC}"
         cd "$LOCAL_TARGET"
         git init
+        
+        # Create .gitignore if -i flag is set
+        # This handles cases where:
+        #   - New repo is being created
+        #   - Existing repo was overridden with -O flag and reinitialized
+        if [ "$CREATE_GITIGNORE" = true ]; then
+            create_gitignore "$LOCAL_TARGET"
+        fi
+    elif [ "$CREATE_GITIGNORE" = true ] && [ "$IS_EXISTING_REPO" = false ]; then
+        # Edge case: .git directory exists but has no branches (empty repository)
+        # Still create .gitignore if -i flag is set, even though git init wasn't needed
+        create_gitignore "$LOCAL_TARGET"
     fi
     
     # Step 4: Create git repo structure (README, initial commit) if new
@@ -893,12 +1236,39 @@ main() {
         create_local_repo "$LOCAL_TARGET" "$contributor" "$TECHNOLOGIES"
     fi
     
-    # Step 5: Push to remote
-    if push_to_remote "$CHECKOUT_BRANCH"; then
-        echo -e "\n${GREEN}Repository setup completed successfully!${NC}"
+    # Handle .gitignore creation for all scenarios
+    if [ "$CREATE_GITIGNORE" = true ]; then
+        cd "$LOCAL_TARGET"
+        if create_gitignore "$LOCAL_TARGET"; then
+            # .gitignore was created - add to git if repository exists
+            if [ -d ".git" ]; then
+                git add .gitignore 2>/dev/null || true
+                if [ -f ".repo_initiated_by_gitremoteforge" ]; then
+                    git add .repo_initiated_by_gitremoteforge 2>/dev/null || true
+                fi
+                # Commit if there are changes staged and repo has commits
+                if ! git diff --cached --quiet 2>/dev/null && has_branches "."; then
+                    git commit -m "Add .gitignore and repository marker (git-remote-forge)" 2>/dev/null || true
+                    echo -e "${GREEN}✓ Added .gitignore to repository${NC}"
+                fi
+            fi
+        fi
+        # If .gitignore already existed, create_gitignore() already informed the user
+    fi
+    
+    # Step 5: Push to remote (only if we have a target and no pending remote conflicts)
+    if [ -n "$TARGET" ] && [ "$REMOTE_EXISTS_CHECK_PENDING" = false ]; then
+        if push_to_remote "$CHECKOUT_BRANCH"; then
+            echo -e "\n${GREEN}Repository setup completed successfully!${NC}"
+        else
+            echo -e "\n${RED}Repository setup completed with errors - see above for details${NC}"
+            exit 1
+        fi
+    elif [ "$CREATE_GITIGNORE" = true ]; then
+        # Only .gitignore was created - operation complete
+        echo -e "\n${GREEN}Operation completed successfully!${NC}"
     else
-        echo -e "\n${RED}Repository setup completed with errors - see above for details${NC}"
-        exit 1
+        echo -e "\n${GREEN}Repository setup completed successfully!${NC}"
     fi
 }
 

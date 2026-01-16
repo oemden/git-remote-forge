@@ -4,7 +4,7 @@ A tool to create and setup git projects locally and push them remotely on GitLab
 
 ## Status
 
-**v0.9.2 - Ready for Use (GitLab Only)**
+**v0.9.4 - Ready for Use (GitLab Only)**
 
 git-remote-forge has reached a stable state suitable for production use.
 The core workflow is tested and reliable: create local repositories, initialize branches by default (main, develop, production) locally, then push to GitLab with a single command.
@@ -204,6 +204,19 @@ gitremote -d my-project -n myusername -f
 - `-S` : Self-hosted URL (optional, for self-hosted GitLab instances)
   - Example: `-S gitlab.example.com`
 
+### Gitignore Options
+
+- `-i` : Create basic .gitignore file (default: .*env, !.env.example, .repo_initiated_by_gitremoteforge)
+  - Creates `.gitignore` with standard environment file patterns
+  - Creates `.repo_initiated_by_gitremoteforge` marker file with version info
+
+### Override Options
+
+- `-O` : Override existing .git directory (removes and reinitializes)
+  - Use with caution: removes existing .git directory and all branches/remotes
+  - Requires double confirmations even when `-f` flag is used
+  - Useful when you want to start fresh with an existing directory
+
 ### Other Options
 
 - `-f` : Force mode (skip preview and confirmation)
@@ -252,6 +265,15 @@ gitremote -d my-api -n myusername -r gitlab -T "python,fastapi" -b production
 
 # Existing directory with relative path
 gitremote -n myusername -p ./my-existing-repo -T "javascript,nodejs"
+
+# Create repo with .gitignore file
+gitremote -d my-project -n myusername -i
+
+# Override existing .git directory (removes and reinitializes)
+gitremote -n myusername -p /path/to/existing/repo -O
+
+# Combine flags: create repo with .gitignore and override existing .git
+gitremote -d my-project -n myusername -i -O -f
 ```
 
 ## What Gets Created
