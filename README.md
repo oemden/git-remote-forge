@@ -4,7 +4,7 @@ A tool to create and setup git projects locally and push them remotely on GitLab
 
 ## Status
 
-**v0.9.4 - Ready for Use (GitLab Only)**
+**v0.9.5 - Ready for Use (GitLab Only)**
 
 git-remote-forge has reached a stable state suitable for production use.
 The core workflow is tested and reliable: create local repositories, initialize branches by default (main, develop, production) locally, then push to GitLab with a single command.
@@ -81,6 +81,46 @@ This will:
 - Create the repository as usual
 - Use `gitlab` as the remote name instead of `origin`
 - Remote URL: `git@gitlab.com:my_gitlab_namespace/my-repo.git`
+
+### Case 5: Replace Remote URL
+
+Replace an existing remote URL (prompts for confirmation):
+
+```bash
+gitremote -n my_gitlab_namespace -R origin
+```
+
+This will:
+- Check if remote `origin` exists with different URL
+- Prompt: replace, keep, or abort
+- If replace: Update remote URL to new provider/namespace
+
+### Case 6: Prevent Duplicate Remote URLs
+
+The script prevents adding multiple remotes with the same URL:
+
+```bash
+# First run: creates remote "gitlab"
+gitremote -d my-repo -n my_namespace -r gitlab
+
+# Second run with different name but same URL - will fail
+gitremote -d my-repo -n my_namespace -r origin
+# Error: Remote URL already exists as remote 'gitlab'
+```
+
+### Case 7: Add Remote with Different URL (Multiple Remotes)
+
+Add a new remote with different URL when other remotes exist:
+
+```bash
+# First: create remote "gitlab"
+gitremote -d my-repo -n my_gitlab_namespace -r gitlab
+
+# Later: add GitHub remote (different URL)
+gitremote -d my-repo -n my_github_username -r github
+# Success: Adds new remote "github" with different URL
+# Notification: "Other remotes exist: gitlab"
+```
 
 ## Prerequisites
 

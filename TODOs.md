@@ -5,7 +5,7 @@
 - `-I`,                Specify what to add to .gitignore ? #TODO
 - `--version`                 Display git-remote-forge version
 - `-v`                 show git remote(s) in current dir `git remote -v` ( detect if `$PWD` is a git repo)
-- `-R`                 add other remote -> origin vs secondary etc... ( should be runned in second step, would require -n,-R,-S, -p (optionnal) )
+- `-R`                 Replace remote ( same Name different provider or URL ) # ✅ COMPLETE (v0.9.5)
 - `-k`                 DELETE online Repo, Require user confirmation.
 - `-K`                 DELETE immediatly online repo ( eg: gitlab has a 2 step process, renaming the repo to something like ny_namespace/my_repo-deletion_scheduled-77729851 ) - check API if deletion can be done in 1 step. Require 2 times user confirmation with BIG WARNINGS.
 
@@ -21,8 +21,8 @@
 -T, --tech         Technologies (user-provided, comma-separated, optional)
 -b, --branch       Checkout branch after creation (default: develop)
 -B, --branches       Add / Override  specific custom branches (other than develop|main|production) # TODO
--r, --remote-name  Set Remote Name ( default: origin ) # ✅ COMPLETE (v0.9.2) -> for future Use
--R, --add-remote-name  Add secondary Remote Name ( should be runned in second step, would require -n,-o, -O,-S, -p (optionnal) ) # TODO ?
+-r, --remote-name  Set Remote Name ( default: origin ) # ✅ COMPLETE (v0.9.2)
+-R, --replace-remote  Replace remote URL (prompts for confirmation) # ✅ COMPLETE (v0.9.5)
 -i, --gitignore    Create basic std gitignore file ( default: .*env, !.env.example, .repo_init_by_gitremoteforge) #TODO
 -I,                Specify what to add to .gitignore ? #TODO
 -p, --path         Path to local directory (existing directory mode)
@@ -95,9 +95,11 @@
 
 - ### Phase 2: Existing Directory Support (v0.9.4) ✅ COMPLETE
 
-- [x] `-r`, --remote-name  Set Remote Name ( default: origin ) # TODO
-- [x] `-i`, --gitignore    Create basic std .gitignore file ( default: .*env, !.env.example, .repo_init_by_gitremoteforge) #TODO
-- [x] `-O` Override any existing .git in existing target directory - user prompted twice for this DESTRUCTIVE operation ( usefull to duplicate a repo )
+- [x] `-r`, --remote-name  Set Remote Name ( default: origin ) # ✅ COMPLETE (v0.9.2)
+- [x] `-i`, --gitignore    Create basic std .gitignore file ( default: .*env, !.env.example, .repo_init_by_gitremoteforge) # ✅ COMPLETE (v0.9.4)
+- [x] `-O` Override any existing .git in existing target directory - user prompted twice for this DESTRUCTIVE operation ( usefull to duplicate a repo ) # ✅ COMPLETE (v0.9.4)
+- [x] `-R` Replace remote URL (prompts for confirmation if URL differs) # ✅ COMPLETE (v0.9.5)
+- [x] URL duplicate detection - prevent adding multiple remotes with same URL # ✅ COMPLETE (v0.9.5)
 
 ---
 

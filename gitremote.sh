@@ -7,7 +7,7 @@
 #   - production: for production releases
 #   - develop: active development branch
 
-Version="0.9.4"
+Version="0.9.5"
 
 # Prerequisites:
 # - Git configured locally (user.name and user.email)
@@ -37,6 +37,9 @@ SELF_HOSTED_URL=""
 REMOTE_NAME="origin"
 NEW_REMOTE_NAME=""
 OVERRIDE_REMOTE=false
+# Flag: Replace remote URL when -R flag is used
+# When true, allows replacing existing remote URL with new one (with user confirmation)
+REPLACE_REMOTE=false
 # Flag: Create .gitignore file when -i flag is used
 # When true, creates .gitignore with default patterns and repository marker file
 CREATE_GITIGNORE=false
@@ -61,9 +64,9 @@ usage() {
     echo "  -d    Local Directory/Project name (required for new repo)"
     echo "  -n    Namespace - for Gitlab /username - for GitHub (target on provider)"
     echo "  -r    Set custom remote name (default: origin)"
+    echo "  -R    Replace remote URL (prompts for confirmation if URL differs)"
     echo "  -i    Create basic .gitignore file (default: .*env, !.env.example, .repo_initiated_by_gitremoteforge)"
     # TODO: Future features (commented out for now)
-    # echo "  -R    Add new remote name (keeps existing remotes) - Future: multi-provider support"
     # echo "  -S    Self-hosted URL (optional, for self-hosted providers)"
     echo "  -t    Auto-detect technologies (existing directory mode)"
     echo "  -T    Technologies (user-provided, comma-separated, optional)"
@@ -74,9 +77,9 @@ usage() {
     echo "  -h    Display this help message"
     echo
     echo "Modes:"
-    echo "  New Repository:       gitremote -d myproject -n myuser -T 'python,js'"
-    echo "  Existing Directory:   gitremote -n myuser -t (auto-detect) or -T 'tech'"
-    echo "  Existing Directory:   gitremote -p /path/to/dir -n myuser -t"
+    echo "  New Repository (inside current directory):       gitremote -d myproject -n myuser -T 'python,js'"
+    echo "  Existing Directory (using current directory):   gitremote -n myuser -t (auto-detect) or -T 'tech'"
+    echo "  Existing Directory (specific directory):  gitremote -p /path/to/dir -n myuser -t"
     echo
     echo "Default branches created: main, production, develop"
     echo "Default checkout: develop (unless -b specified)"
@@ -86,9 +89,8 @@ usage() {
 # Parse command line arguments
 # Handles all command-line flags and sets corresponding variables
 parse_arguments() {
-    # Current flags: d, n, t, T, B, S, p, r, i, O, f, h
-    # TODO: Future flags -R commented out for multi-remote support
-    while getopts "d:n:t:T:b:S:p:r:iOfh" opt; do
+    # Current flags: d, n, t, T, B, S, p, r, R, i, O, f, h
+    while getopts "d:n:t:T:b:S:p:r:R:iOfh" opt; do
         case ${opt} in
             d )
                 # Directory/Project name (creates new directory)
@@ -106,12 +108,12 @@ parse_arguments() {
                 # User-provided technologies (comma-separated)
                 TECHNOLOGIES=$OPTARG
                 ;;
-            # TODO: Future feature - Add new remote (multi-provider support)
-            # R )
-            #     # Add new remote name (keeps existing remotes)
-            #     # Example: -R github (adds github remote, keeps origin)
-            #     NEW_REMOTE_NAME=$OPTARG
-            #     ;;
+            R )
+                # Replace remote URL (force replace mode)
+                # Example: -R origin (replaces origin URL, prompts if URL differs)
+                REMOTE_NAME=$OPTARG
+                REPLACE_REMOTE=true
+                ;;
             b )
                 # Branch to checkout after creation (default: develop)
                 CHECKOUT_BRANCH=$OPTARG
@@ -582,15 +584,48 @@ push_to_remote() {
     #         echo -e "${GREEN}✓ Added remote: ${BLUE}${target_remote}${NC}"
     #     fi
     
-    # Current behavior: Add remote if it doesn't exist
-    # manage_git() already validated that remote doesn't conflict
+    # Check for duplicate URLs before adding remote
+    # This prevents adding multiple remotes with the same URL
+    local remote_with_same_url=$(check_remote_url_exists "$remote_url" "$LOCAL_TARGET")
+    if [ -n "$remote_with_same_url" ] && [ "$remote_with_same_url" != "$target_remote" ]; then
+        # URL already exists with a different remote name
+        if [ "$REPLACE_REMOTE" = true ]; then
+            # -R flag: Rename existing remote to new name (same URL)
+            echo -e "${BLUE}Renaming remote '${remote_with_same_url}' to '${target_remote}' (same URL)${NC}"
+            git remote rename "$remote_with_same_url" "$target_remote"
+            echo -e "${GREEN}✓ Remote renamed successfully${NC}"
+        else
+            # -r flag: Prevent duplicate, show error
+            echo -e "${RED}✗ Cannot add remote '${target_remote}': URL '${remote_url}' already exists as remote '${remote_with_same_url}'${NC}"
+            echo -e "${YELLOW}Use -R flag to replace remote name with same URL${NC}"
+            exit 1
+        fi
+    fi
+    
+    # Check if remote name exists
     if ! git remote | grep -q "^${target_remote}$"; then
+        # Remote name doesn't exist - check if other remotes exist to notify user
+        local other_remotes=$(git remote | grep -v "^${target_remote}$" | tr '\n' ',' | sed 's/,$//')
+        if [ -n "$other_remotes" ]; then
+            echo -e "${YELLOW}⚠ Other remotes exist: ${other_remotes}${NC}"
+        fi
+        # Add new remote
         git remote add "$target_remote" "$remote_url"
-        echo -e "${GREEN}✓ Added remote: ${BLUE}${target_remote}${NC}"
+        echo -e "${GREEN}✓ Added remote: ${BLUE}${target_remote}${NC} with URL ${BLUE}${remote_url}${NC}"
     else
-        # This shouldn't happen if manage_git() worked correctly
-        # But handle gracefully just in case
-        echo -e "${YELLOW}Remote '${target_remote}' already exists, using existing${NC}"
+        # Remote name exists - check if URL matches
+        local existing_url=$(get_remote_url "$target_remote" "$LOCAL_TARGET")
+        if [ -n "$existing_url" ] && [ "$existing_url" = "$remote_url" ]; then
+            # URLs match - use existing remote
+            echo -e "${GREEN}✓ Remote '${target_remote}' already exists with matching URL, using existing${NC}"
+        else
+            # Remote exists but URL differs - this should have been handled in manage_git() or after setup_provider()
+            # But add safety check here too
+            echo -e "${YELLOW}⚠ Remote '${target_remote}' already exists with different URL${NC}"
+            echo -e "${BLUE}Existing: ${existing_url}${NC}"
+            echo -e "${BLUE}Requested: ${remote_url}${NC}"
+            echo -e "${YELLOW}Using existing remote${NC}"
+        fi
     fi
     
     # If existing repo with branches, push as-is
@@ -728,6 +763,71 @@ validate_remote_exists() {
     else
         return 1  # No remotes
     fi
+}
+
+# Check if a remote URL already exists in any remote
+# Returns remote name if URL exists, empty string if not
+# Usage: remote_name=$(check_remote_url_exists "$url" "$path")
+check_remote_url_exists() {
+    local url="$1"
+    local path="$2"
+    cd "$path"
+    
+    # Get remote name that has this URL (fetch URLs)
+    local remote_with_url=$(git remote -v | grep -E '\s+\(fetch\)$' | awk -v url="$url" '$2 == url {print $1; exit}')
+    
+    if [ -n "$remote_with_url" ]; then
+        echo "$remote_with_url"
+        return 0  # URL exists
+    else
+        return 1  # URL doesn't exist
+    fi
+}
+
+# Get the URL of an existing remote
+# Returns URL if remote exists, empty string if not
+# Usage: url=$(get_remote_url "$remote_name" "$path")
+get_remote_url() {
+    local remote_name="$1"
+    local path="$2"
+    cd "$path"
+    git remote get-url "$remote_name" 2>/dev/null
+}
+
+# Prompt user when remote name exists but URL differs
+# Returns: "replace", "keep", or "abort"
+# Usage: choice=$(prompt_replace_remote "$remote_name" "$new_url" "$existing_url")
+prompt_replace_remote() {
+    local remote_name="$1"
+    local new_url="$2"
+    local existing_url="$3"
+    
+    echo -e "\n${YELLOW}Remote '${remote_name}' already exists with different URL:${NC}"
+    echo -e "  Existing: ${BLUE}${existing_url}${NC}"
+    echo -e "  New:      ${BLUE}${new_url}${NC}"
+    echo
+    echo -e "${YELLOW}Choose action:${NC}"
+    echo "  replace - Replace URL with new one"
+    echo "  keep    - Keep existing URL (abort operation)"
+    echo "  abort   - Abort operation"
+    echo
+    read -p "Your choice [replace/keep/abort]: " choice
+    
+    case "$choice" in
+        replace|r)
+            echo "replace"
+            ;;
+        keep|k)
+            echo "keep"
+            ;;
+        abort|a|"")
+            echo "abort"
+            ;;
+        *)
+            echo -e "${RED}Invalid choice${NC}"
+            prompt_replace_remote "$remote_name" "$new_url" "$existing_url"
+            ;;
+    esac
 }
 
 # Prompt user for branch strategy (Y/N/A)
@@ -1080,7 +1180,9 @@ manage_git() {
                 # No conflict: Different remote name exists, but we want to use REMOTE_NAME
                 # This is OK - we can add a new remote with the specified name alongside the existing one
                 # git-remote-forge will work with REMOTE_NAME, existing remote is left untouched
+                # Note: URL duplicate check happens after setup_provider() sets REMOTE_URL
                 echo -e "${YELLOW}Remote '${existing_remote}' exists, will use '${REMOTE_NAME}'${NC}"
+                echo -e "${BLUE}Note: Will check for URL duplicates after provider setup${NC}"
             fi
         fi
         # else: No remotes - continue (OK, will add remote)
@@ -1165,7 +1267,7 @@ main() {
         # If user only wants .gitignore, we allow operation to continue even with remote conflicts
         if [ "$REMOTE_EXISTS_CHECK_PENDING" = true ]; then
             cd "$LOCAL_TARGET"
-            local existing_remote_url=$(git remote get-url "$REMOTE_NAME" 2>/dev/null)
+            local existing_remote_url=$(get_remote_url "$REMOTE_NAME" "$LOCAL_TARGET")
             if [ -n "$existing_remote_url" ] && [ "$existing_remote_url" = "$REMOTE_URL" ]; then
                 # Remote exists and URL matches - this is fine, just skip adding remote
                 echo -e "${GREEN}✓ Remote '${REMOTE_NAME}' already configured with matching URL${NC}"
@@ -1173,8 +1275,8 @@ main() {
                 echo -e "${BLUE}  Skipping remote setup, continuing with other operations...${NC}"
                 REMOTE_EXISTS_CHECK_PENDING=false
             elif [ -n "$existing_remote_url" ]; then
-                # Remote exists but URL doesn't match
-                # If user only wants .gitignore, warn but continue; otherwise show error
+                # Remote exists but URL doesn't match - prompt user for action
+                # If user only wants .gitignore, warn but continue; otherwise prompt
                 if [ "$CREATE_GITIGNORE" = true ] && [ "$IS_EXISTING_REPO" = true ]; then
                     # User wants .gitignore on existing repo - warn but continue
                     echo -e "${YELLOW}⚠ Remote '${REMOTE_NAME}' exists with different URL${NC}"
@@ -1183,22 +1285,62 @@ main() {
                     echo -e "${YELLOW}Continuing with .gitignore creation (remote setup skipped)${NC}"
                     REMOTE_EXISTS_CHECK_PENDING=false
                 else
-                    # Need remote setup - show error
-                    echo -e "${RED}✗ Remote '${REMOTE_NAME}' already configured with different URL${NC}"
-                    echo -e "${BLUE}Current remote:${NC}"
-                    git remote -v
-                    echo -e "${BLUE}Would create:${NC}"
-                    echo -e "  ${REMOTE_NAME}  ${REMOTE_URL}"
-                    echo
-                    echo -e "${YELLOW}Options:${NC}"
-                    echo "  1. Change remote URL: git remote set-url ${REMOTE_NAME} ${REMOTE_URL}"
-                    echo "  2. Remove remote: git remote remove ${REMOTE_NAME}"
-                    echo "  3. Use -r <name> to specify a different remote name"
-                    echo "  4. Use -O flag to override and reinitialize (removes .git)"
-                    echo "  5. Manage this repo manually outside gitremote"
-                    exit 1
+                    # Need remote setup - prompt user for replace/keep/abort
+                    local choice=$(prompt_replace_remote "$REMOTE_NAME" "$REMOTE_URL" "$existing_remote_url")
+                    case "$choice" in
+                        replace)
+                            # User chose to replace URL
+                            git remote set-url "$REMOTE_NAME" "$REMOTE_URL"
+                            echo -e "${GREEN}✓ Updated remote '${REMOTE_NAME}' URL${NC}"
+                            REMOTE_EXISTS_CHECK_PENDING=false
+                            ;;
+                        keep)
+                            # User chose to keep existing URL - abort operation
+                            echo -e "${YELLOW}Keeping existing remote URL. Operation cancelled.${NC}"
+                            exit 0
+                            ;;
+                        abort)
+                            # User chose to abort
+                            echo -e "${YELLOW}Operation cancelled by user${NC}"
+                            exit 0
+                            ;;
+                    esac
                 fi
             fi
+        fi
+        
+        # Check for duplicate URLs when different remote name exists
+        # This prevents adding multiple remotes with the same URL
+        cd "$LOCAL_TARGET"
+        local remote_with_same_url=$(check_remote_url_exists "$REMOTE_URL" "$LOCAL_TARGET")
+        if [ -n "$remote_with_same_url" ] && [ "$remote_with_same_url" != "$REMOTE_NAME" ]; then
+            # URL already exists with a different remote name
+            if [ "$REPLACE_REMOTE" = true ]; then
+                # -R flag: Rename existing remote to new name (same URL)
+                echo -e "${BLUE}Renaming remote '${remote_with_same_url}' to '${REMOTE_NAME}' (same URL)${NC}"
+                git remote rename "$remote_with_same_url" "$REMOTE_NAME"
+                echo -e "${GREEN}✓ Remote renamed successfully${NC}"
+            else
+                # -r flag: Prevent duplicate, show options
+                echo -e "${RED}✗ Remote URL '${REMOTE_URL}' already exists as remote '${remote_with_same_url}'${NC}"
+                echo -e "${BLUE}Current remotes:${NC}"
+                git remote -v
+                echo
+                echo -e "${YELLOW}Options:${NC}"
+                echo "  1. Use existing remote '${remote_with_same_url}' (don't specify -r, or use -r ${remote_with_same_url})"
+                echo "  2. Use -R flag to replace remote name (with same URL: namespace and provider)"
+                echo "  3. Remove existing remote manually outside gitremote: git remote remove ${remote_with_same_url}"
+                echo "  5. Use -O flag to override and reinitialize (removes .git) - WARNING: DESTRUCTIVE. Read documentation, this would delete all existing .git history"
+                exit 1
+            fi
+        fi
+        
+        # Notify user when adding new remote with different URL (other remotes exist)
+        local other_remotes=$(git remote | grep -v "^${REMOTE_NAME}$" | tr '\n' ',' | sed 's/,$//')
+        if [ -n "$other_remotes" ] && ! git remote | grep -q "^${REMOTE_NAME}$"; then
+            # Adding new remote and other remotes exist - notify user
+            echo -e "${YELLOW}⚠ Other remotes exist: ${other_remotes}${NC}"
+            echo -e "${BLUE}Adding new remote '${REMOTE_NAME}' with URL '${REMOTE_URL}'${NC}"
         fi
     fi
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 # gitremote.sh
 # A Bash script to install gitremote.sh.
-# v0.8.0
+# v0.9.5
 # Will be installed in /usr/local/bin/gitremote
 
 INSTALL_PATH="/usr/local/bin/gitremote"
