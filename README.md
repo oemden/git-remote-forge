@@ -4,7 +4,7 @@ A tool to create and setup git projects locally and push them remotely on GitLab
 
 ## Status
 
-**v0.9.7 - Ready for Use (GitLab Only)**
+**v0.9.8 - Ready for Use (GitLab Only)**
 
 git-remote-forge has reached a stable state suitable for production use.
 The core workflow is tested and reliable: create local repositories, initialize branches by default (main, develop, production) locally, then push to GitLab with a single command.
@@ -324,6 +324,11 @@ gitremote -n myusername -p /path/to/existing/repo -O
 # Combine flags: create repo with .gitignore and override existing .git
 gitremote -d my-project -n myusername -i -O -f
 ```
+
+## Tests
+
+Some basic manual test scripts are available in the `tests/` directory.
+For details about the test scripts and the `tests.cfg` configuration file, see `tests/README.md`.
 
 ## What Gets Created
 

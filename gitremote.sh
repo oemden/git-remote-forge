@@ -7,7 +7,7 @@
 #   - production: for production releases
 #   - develop: active development branch
 
-Version="0.9.7"
+version="0.9.8"
 
 # Prerequisites:
 # - Git configured locally (user.name and user.email)
@@ -59,7 +59,7 @@ NC='\033[0m' # No Color
 
 # Function to display usage
 usage() {
-    echo "git-remote-forge - Repository Setup Script v${Version}"
+    echo "git-remote-forge - Repository Setup Script v${version}"
     echo "-----------------------------"
     echo "Usage: $0 [OPTIONS]"
     echo "Options:"
@@ -427,7 +427,7 @@ create_gitignore() {
     # This file tracks that the repository was initialized by git-remote-forge
     # Contains version information for tracking purposes
     if [ ! -f ".repo_initiated_by_gitremoteforge" ]; then
-        echo "gitremoteforge version = ${Version}" > .repo_initiated_by_gitremoteforge
+        echo "gitremoteforge version = ${version}" > .repo_initiated_by_gitremoteforge
         echo -e "${GREEN}✓ Created repository marker file${NC}"
     fi
     
@@ -1240,7 +1240,7 @@ manage_git() {
 
 # Main script
 main() {
-    echo "git-remote-forge - Repository Setup Script v${Version}"
+    echo "git-remote-forge - Repository Setup Script v${version}"
     echo "-----------------------------"
     
     # Validate required inputs and set defaults

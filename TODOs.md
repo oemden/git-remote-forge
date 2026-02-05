@@ -1,13 +1,16 @@
 # TODO List
 
-- `-K` --keep          Keep existing files eg: README.md, .gitignore
-- Create a .repo_initiated_by_gitremoteforge ( with gitremote versionn, add to .gitignore if exist)
-- `-I`,                Specify what to add to .gitignore ? #TODO
-- `--version`                 Display git-remote-forge version
-- `-v`                 show git remote(s) in current dir `git remote -v` ( detect if `$PWD` is a git repo)
-- `-R`                 Replace remote ( same Name different provider or URL ) # ✅ COMPLETE (v0.9.5)
-- `-k`                 DELETE online Repo, Require user confirmation.
-- `-K`                 DELETE immediatly online repo ( eg: gitlab has a 2 step process, renaming the repo to something like ny_namespace/my_repo-deletion_scheduled-77729851 ) - check API if deletion can be done in 1 step. Require 2 times user confirmation with BIG WARNINGS.
+- [ ] `-N` Create New Namespace ( Gitlab ) - Requires `-V` ( `priv` `private` vs `pub` `public` )
+- [ ] `-V` Visibility - Private vs Public repo (on Gitlab - depends on namespace visibility - to check for Github and others ) defaults to Private `priv` `private`
+- [ ] `-K` --keep          Keep existing files eg: README.md, .gitignore\
+- [ ] Create a .repo_initiated_by_gitremoteforge ( with gitremote versionn, add to .gitignore if exist)
+- [ ] `-I`,                Specify what to add to .gitignore ? #TODO
+- [ ] `--version`                 Display git-remote-forge version
+- [ ] `-v`                 show git remote(s) in current dir `git remote -v` ( detect if `$PWD` is a git repo)
+- [ ] `-R`                 Replace remote ( same Name different provider or URL ) # ✅ COMPLETE (v0.9.5)
+- [ ] `-k`                 DELETE online Repo, Require user confirmation.
+- [ ] `-K`                 DELETE immediatly online repo ( eg: gitlab has a 2 step process, renaming the repo to something like ny_namespace/my_repo-deletion_scheduled-77729851 ) - check API if deletion can be done in 1 step. Require 2 times user confirmation with BIG WARNINGS.
+- [ ]                      Download .gitignore templates from [https://github.com/github/gitignore]
 
 ## Parameter Strategy
 
@@ -30,6 +33,11 @@
 -h, --help         Display help message
 --dry              Dry Mode, eg: do not do anything, just show remote repo URL, remote name (origin), branches to create
 ```
+
+### TESTS
+
+- [x] Split Tests.sh into smaller tests
+- [x] Create tests.cfg - Move hardcoded VALUES in script to tests.cfg
 
 ### Configuration
 
@@ -160,7 +168,7 @@
 
 - [ ] Implement GitHub provider (API-based repo creation)
 - [ ] Implement Bitbucket provider (optional for v1)
-- [ ] URL pattern detection per provider (git@gitlab.com: vs github.com)
+- [ ] URL pattern detection per provider (<git@gitlab.com>: vs github.com)
 
 ### Credential & Validation
 
