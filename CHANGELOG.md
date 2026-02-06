@@ -2,6 +2,21 @@
 
 All notable changes to git-remote-forge are documented here.
 
+## [0.10.1] - 2026-02-06
+
+### Added
+
+- Dynamic dummy repository names for test scripts via `tests/generate_dummy_repo_name.sh`, removing hard-coded project names from `tests/tests.cfg`
+- New cleanup utility `tests/test_cleanup_dummy_repos.sh` to discover and delete dummy test repositories both remotely (GitLab) and locally
+- `-c` flag in `tests/tests.sh` to run the cleanup utility from the main test orchestrator
+
+### Changed
+
+- Updated existing test scripts to accept an optional dummy project name argument and fall back to generated names when not provided
+- Improved test script documentation with concise PURPOSE headers and inline comments to clarify each scenario and safety guard
+
+---
+
 ## [0.10.0] - 2026-02-06
 
 ### Added

@@ -15,6 +15,7 @@
 - [ ] `-v`                 show git remote(s) in current dir `git remote -v` ( detect if `$PWD` is a git repo)
 - [ ] `-R`                 Replace remote ( same Name different provider or URL ) # ✅ COMPLETE (v0.9.5)
 - [ ]                      Download .gitignore templates from [https://github.com/github/gitignore]
+- [x]  Add a Clean test repos (eg: when testing new repo or other tests, clean up every dummy repos locally and online ) (v0.10.1)
 
 ## Parameter Strategy
 
