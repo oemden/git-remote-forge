@@ -1,6 +1,8 @@
 #!/bin/bash
+# PURPOSE: tests/test_delete_online_repo_gitlab.sh - Orchestrator for GitLab deletion tests (safe and force)
+# High-level wrapper that runs both the -k (safe) and -K (force) deletion scenarios.
 
-version="0.10.0"
+version="0.10.1"
 
 # Test scenario: delete online GitLab repo from an existing local repository.
 # Exercises:

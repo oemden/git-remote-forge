@@ -4,10 +4,9 @@ A tool to create and setup git projects locally and push them remotely on GitLab
 
 ## Status
 
-**v0.10.0 - Ready for Use (GitLab Only)**
+**v0.10.1 - Ready for Use (GitLab Only)**
 
-git-remote-forge has reached a stable state suitable for production use.
-The core workflow is tested and reliable: create local repositories, initialize branches by default (main, develop, production) locally, then push to GitLab with a single command.
+git-remote-forge workflow can be used to: create local repositories, initialize branches by default (main, develop, production) locally, then push to provider (GitLab for now) with a single command.
 GitHub, Bitbucket, and Gitea providers are in the roadmap but not yet implemented.
 If you use GitLab, this tool will save you time on repetitive setup tasks.
 
