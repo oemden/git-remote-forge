@@ -1,5 +1,7 @@
 #!/bin/bash
 
+version="0.10.0"
+
 # Test scenario: destructive reset of an existing git repository using -O.
 # Mirrors original Case04 behavior from tests.sh, with an added safety guard.
 

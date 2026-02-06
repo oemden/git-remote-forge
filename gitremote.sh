@@ -7,7 +7,7 @@
 #   - production: for production releases
 #   - develop: active development branch
 
-version="0.9.8"
+version="0.10.0"
 
 # Prerequisites:
 # - Git configured locally (user.name and user.email)
@@ -49,6 +49,16 @@ OVERRIDE_GIT=false
 # Flag: Remote exists check is pending (deferred until after provider setup)
 # When true, need to verify remote URL matches after setup_provider sets REMOTE_URL
 REMOTE_EXISTS_CHECK_PENDING=false
+ # Flag: Remote deletion mode for online repositories (-k / -K, GitLab only for now)
+# When set to "safe" or "force", script performs remote delete-only flow instead of creation/push
+DELETE_ONLINE_REPO_MODE=""
+# Last GitLab API call status and body (used by minimal helpers for -k / -K)
+GITLAB_API_LAST_STATUS=""
+GITLAB_API_LAST_BODY=""
+GITLAB_LAST_PROJECT_ID=""
+GITLAB_LAST_PROJECT_PATH_ENCODED=""
+HARD_DELETE_FORCE_MODE=false
+GET_PROJECT_ID_ONLY=false
 
 # Colors for output
 RED='\033[0;31m'
@@ -76,7 +86,9 @@ usage() {
     echo "  -p    Path to local directory (optional, for existing directory mode)"
     echo "  -P    Provider (gitlab|github|bitbucket|gitea, default: gitlab)"
     echo "  -f    Force mode (skip dry-run and confirmation)"
+    echo "  -F    Force remote delete confirmations for -k / -K (non-interactive hard delete)"
     echo "  -O    Override existing .git directory (removes and reinitializes) - DESTRUCTIVE - Requires double confirmations even with -f flag"
+    echo "  -W    Resolve and print GitLab project id from current git remote"
     echo "  -h    Display this help message"
     echo
     echo "Modes:"
@@ -93,8 +105,8 @@ usage() {
 # Parse command line arguments
 # Handles all command-line flags and sets corresponding variables
 parse_arguments() {
-    # Current flags: d, n, t, T, B, S, p, r, R, i, O, f, h, P
-    while getopts "d:n:t:T:b:S:p:r:R:iOfhP:" opt; do
+    # Current flags: d, n, t, T, B, S, p, r, R, i, O, f, h, P, k, K, W, F
+    while getopts "d:n:t:T:b:S:p:r:R:iOfFhkKWP:" opt; do
         case ${opt} in
             d )
                 # Directory/Project name (creates new directory)
@@ -167,6 +179,29 @@ parse_arguments() {
                         ;;
                 esac
                 ;;
+            k )
+                # -k flag: Delete online repository in safe mode (requires confirmation)
+                # GitLab-only in current version; performs remote delete-only operation
+                if [ "$DELETE_ONLINE_REPO_MODE" = "force" ]; then
+                    echo "Error: Options -k and -K cannot be used together"
+                    usage
+                fi
+                DELETE_ONLINE_REPO_MODE="safe"
+                ;;
+            K )
+                # -K flag: Force delete online repository (destructive, two-step confirmation)
+                # GitLab-only in current version; performs remote delete-only operation
+                if [ "$DELETE_ONLINE_REPO_MODE" = "safe" ]; then
+                    echo "Error: Options -k and -K cannot be used together"
+                    usage
+                fi
+                DELETE_ONLINE_REPO_MODE="force"
+                ;;
+            W )
+                # -W flag: Debug helper - resolve and print GitLab project id and path only
+                # Does not create, delete, or modify anything on the remote.
+                GET_PROJECT_ID_ONLY=true
+                ;;
             : )
                 # Missing argument for option
                 echo "Error: Option -$OPTARG requires an argument"
@@ -175,6 +210,10 @@ parse_arguments() {
             f )
                 # Force mode: skip preview and confirmation
                 FORCE_MODE=true
+                ;;
+            F )
+                # -F flag: Force remote delete confirmations for -k / -K (non-interactive)
+                HARD_DELETE_FORCE_MODE=true
                 ;;
             h )
                 # Display help message
@@ -412,6 +451,74 @@ handle_gitea_setup() {
     
     echo
     # TODO: implement handle_gitea_setup
+}
+
+# Minimal GitLab API helper for remote repository management (-k / -K)
+# Uses API_ENDPOINT from handle_gitlab_setup and expects a valid access token
+# in either GITREMOTE_FORGE_GITLAB_TOKEN or GITLAB_ACCESS_TOKEN.
+# This helper intentionally keeps token handling simple; robust detection/UX
+# will be implemented in a future version.
+gitlab_api_request() {
+    local method="$1"
+    local endpoint="$2"
+    local url="${API_ENDPOINT}${endpoint}"
+
+    # Prefer project-specific token variable, fall back to generic GitLab token if set.
+    local token="${GITREMOTE_FORGE_GITLAB_TOKEN:-$GITLAB_ACCESS_TOKEN}"
+
+    # Reset last-call state
+    GITLAB_API_LAST_STATUS=""
+    GITLAB_API_LAST_BODY=""
+
+    # Perform request and capture both body and HTTP status code.
+    # curl is expected to be available in the environment.
+    local response http_code body
+    response=$(curl -sS -X "$method" -H "PRIVATE-TOKEN: ${token}" "$url" -w " HTTP_STATUS:%{http_code}" 2>/dev/null || echo " HTTP_STATUS:000")
+    http_code="${response##*HTTP_STATUS:}"
+    body="${response% HTTP_STATUS:*}"
+
+    GITLAB_API_LAST_STATUS="$http_code"
+    GITLAB_API_LAST_BODY="$body"
+
+    # Consider any 2xx status as success; caller can inspect status/body if needed.
+    if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
+        return 0
+    fi
+
+    return 1
+}
+
+find_project_id_gitlab() {
+    cd "$BASE_DIR" 2>/dev/null || true
+    local origin_url
+    origin_url=$(git remote get-url "$REMOTE_NAME" 2>/dev/null || git remote get-url origin 2>/dev/null)
+
+    local namespace repo_name path_part tmp
+    case "$origin_url" in
+        git@*:* )
+            path_part="${origin_url#*:}"
+            ;;
+        http://*|https://*|ssh://* )
+            tmp="${origin_url#*://}"
+            path_part="${tmp#*/}"
+            ;;
+        * )
+            return 1
+            ;;
+    esac
+
+    path_part="${path_part%.git}"
+    repo_name="${path_part##*/}"
+    namespace="${path_part%/*}"
+
+    local project_path_encoded="${namespace}%2F${repo_name}"
+
+    local project_id
+    project_id=$(curl -s --header "PRIVATE-TOKEN: ${GITREMOTE_FORGE_GITLAB_TOKEN}" "https://gitlab.com/api/v4/projects/${project_path_encoded}" | jq -r '.id')
+
+    GITLAB_LAST_PROJECT_ID="$project_id"
+    echo "$project_id"
+    return 0
 }
 
 # Function to create .gitignore file and repository marker
@@ -723,6 +830,285 @@ setup_provider() {
     esac
 }
 
+delete_online_repo_safe() {
+    case "$PROVIDER" in
+        gitlab)
+            delete_online_repo_safe_gitlab
+            ;;
+        *)
+            echo "Error: -k is currently implemented for GitLab provider only."
+            return 1
+            ;;
+    esac
+}
+
+# Delete remote GitLab repository in safe mode (-k).
+# Requires namespace TARGET and repository name REPO_NAME to be set.
+# Performs a single confirmation by asking the user to type the repository name.
+# Also records original and scheduled-deletion URLs in .repo_initiated_by_gitremoteforge.
+delete_online_repo_safe_gitlab() {
+    echo -e "${BLUE}Provider:${NC} GitLab"
+    echo -e "${BLUE}Project path:${NC} ${TARGET}/${REPO_NAME}"
+    echo -e "${YELLOW}This operation will delete the remote GitLab project only.${NC}"
+    echo -e "${YELLOW}Local files and any local .git repository are not modified by this command.${NC}"
+    echo
+    if [ "$HARD_DELETE_FORCE_MODE" = true ]; then
+        echo -e "${YELLOW}Force remote delete (-F) enabled: skipping repository-name confirmation for -k.${NC}"
+    else
+        echo -n "To confirm deletion, type the repository name exactly ('${REPO_NAME}'): "
+        read -r confirmation
+
+        if [ "$confirmation" != "$REPO_NAME" ]; then
+            echo -e "${GREEN}Names did not match. Remote deletion aborted. No changes made.${NC}"
+            return 0
+        fi
+    fi
+
+    # Capture original remote URL from the current git repository (if available).
+    local original_remote_url=""
+    local current_dir="$BASE_DIR"
+    if [ -d "$current_dir/.git" ]; then
+        cd "$current_dir" 2>/dev/null || true
+        original_remote_url=$(git remote get-url "$REMOTE_NAME" 2>/dev/null || git remote get-url origin 2>/dev/null || echo "")
+    fi
+
+    echo -e "${BLUE}Resolving GitLab project ID from remote...${NC}"
+    if ! find_project_id_gitlab >/dev/null 2>&1; then
+        echo -e "${RED}Failed to resolve GitLab project id from current git remote.${NC}"
+        return 1
+    fi
+
+    echo -e "${BLUE}Deleting remote GitLab project by id:${NC} ${YELLOW}${GITLAB_LAST_PROJECT_ID}${NC}"
+    if ! gitlab_api_request "DELETE" "/projects/${GITLAB_LAST_PROJECT_ID}"; then
+        echo -e "${RED}GitLab project delete request failed.${NC}"
+        if [ -n "$GITLAB_API_LAST_STATUS" ]; then
+            echo -e "${YELLOW}GitLab API status:${NC} ${GITLAB_API_LAST_STATUS}"
+        fi
+        if [ -n "$GITLAB_API_LAST_BODY" ]; then
+            echo -e "${YELLOW}GitLab API response body:${NC}"
+            printf "%s\n" "$GITLAB_API_LAST_BODY"
+        fi
+        return 1
+    fi
+
+    echo -e "${GREEN}✓ Remote GitLab project '${TARGET}/${REPO_NAME}' deletion requested successfully.${NC}"
+
+    # Derive scheduled-for-deletion project name/URLs from project id (best-effort).
+    local scheduled_name scheduled_ssh_url scheduled_https_url
+    if [ -n "$GITLAB_LAST_PROJECT_ID" ]; then
+        scheduled_name="${REPO_NAME}-deletion_scheduled-${GITLAB_LAST_PROJECT_ID}"
+        # GITLAB_DOMAIN is set by handle_gitlab_setup during provider setup.
+        local domain="${GITLAB_DOMAIN:-gitlab.com}"
+        scheduled_ssh_url="git@${domain}:${TARGET}/${scheduled_name}.git"
+        scheduled_https_url="https://${domain}/${TARGET}/${scheduled_name}"
+    fi
+
+    if [ -n "$scheduled_https_url" ] || [ -n "$scheduled_ssh_url" ]; then
+        echo -e "${BLUE}Scheduled-deletion project name (GitLab):${NC} ${TARGET}/${scheduled_name}"
+        [ -n "$scheduled_ssh_url" ] && echo -e "${BLUE}Scheduled-deletion SSH URL:${NC} ${scheduled_ssh_url}"
+        [ -n "$scheduled_https_url" ] && echo -e "${BLUE}Scheduled-deletion HTTPS URL:${NC} ${scheduled_https_url}"
+    fi
+
+    # Append tracking information to .repo_initiated_by_gitremoteforge in the local repo (if accessible).
+    if [ -d "$current_dir" ]; then
+        cd "$current_dir" 2>/dev/null || true
+        if [ ! -f ".repo_initiated_by_gitremoteforge" ]; then
+            echo "gitremoteforge version = ${version}" > .repo_initiated_by_gitremoteforge 2>/dev/null || true
+        fi
+        if [ -w ".repo_initiated_by_gitremoteforge" ]; then
+            # Do not duplicate the deletion scheduled block if it already exists.
+            if ! grep -q "################### DELETION SCHEDULED START #####################" ".repo_initiated_by_gitremoteforge" 2>/dev/null; then
+                # Compute provider/domain and dates for tracking block.
+                local domain="${GITLAB_DOMAIN:-gitlab.com}"
+                local today=""
+                local reminder_date=""
+                if command -v date >/dev/null 2>&1; then
+                    today=$(date '+%Y-%m-%d' 2>/dev/null || echo "")
+                    reminder_date=$(date -v+1m '+%Y-%m-%d' 2>/dev/null || date -d '+30 days' '+%Y-%m-%d' 2>/dev/null || date '+%Y-%m-%d')
+                fi
+                {
+                    echo "################### DELETION SCHEDULED START #####################"
+                    echo "# Deletion Scheduled on remote GitLab on ${today}"
+                    echo "# ------ remote origin ssh url"
+                    echo "remote_origin_original_ssh_url = git@${domain}:${TARGET}/${REPO_NAME}.git"
+                    if [ -n "$scheduled_ssh_url" ]; then
+                        echo "remote_origin_deletion_scheduled_ssh_url = ${scheduled_ssh_url}"
+                    fi
+                    echo "# ------ remote origin https url"
+                    echo "remote_origin_original_https_url = https://${domain}/${TARGET}/${REPO_NAME}"
+                    if [ -n "$scheduled_https_url" ]; then
+                        echo "remote_origin_deletion_scheduled_https_url = ${scheduled_https_url}"
+                    fi
+                    if [ -n "$reminder_date" ]; then
+                        echo "# ------ Scheduled deletion date"
+                        echo "scheduled_deletion_reminder_at = ${reminder_date}"
+                    fi
+                    echo "#################### DELETION SCHEDULED END ######################"
+                } >> .repo_initiated_by_gitremoteforge 2>/dev/null || true
+            fi
+        fi
+    fi
+
+    return 0
+}
+
+# Delete remote GitLab repository in force mode (-K).
+# Uses a two-step destructive confirmation flow similar in spirit to confirm_destructive_git_removal,
+# then delegates to delete_online_repo_safe_gitlab and finally attempts an immediate delete
+# on the scheduled-deletion project when supported by the GitLab instance.
+delete_online_repo_force() {
+    case "$PROVIDER" in
+        gitlab)
+            delete_online_repo_force_gitlab
+            ;;
+        *)
+            echo "Error: -K is currently implemented for GitLab provider only."
+            return 1
+            ;;
+    esac
+}
+
+delete_online_repo_force_gitlab() {
+    if [ "$HARD_DELETE_FORCE_MODE" = true ]; then
+        echo -e "${YELLOW}Force remote delete (-F) enabled: skipping interactive confirmations for -K.${NC}"
+    else
+        # Step 1: High-level destructive warning
+        echo
+        echo -e "${RED}═══════════════════════════════════════════════════════════════${NC}"
+        echo -e "${RED}  ⚠⚠⚠  REMOTE PROJECT DELETION WARNING  ⚠⚠⚠${NC}"
+        echo -e "${RED}═══════════════════════════════════════════════════════════════${NC}"
+        echo
+        echo -e "${RED}You are about to delete the remote GitLab project:${NC}"
+        echo -e "  ${YELLOW}${TARGET}/${REPO_NAME}${NC}"
+        echo
+        echo -e "${YELLOW}What will be removed on GitLab:${NC}"
+        echo -e "  • Remote repository and its git history"
+        echo -e "  • All branches, tags, and remote references"
+        echo -e "  • Any other data tied to the GitLab project (issues, merge requests, etc.)"
+        echo
+        echo -e "${YELLOW}Local files and local .git repository are NOT modified by this command.${NC}"
+        echo
+        echo -e "${YELLOW}Type 'yes' to continue, or anything else to abort:${NC}"
+        read -r first_response
+
+        case "$first_response" in
+            [Yy][Ee][Ss])
+                ;;
+            *)
+                echo -e "${GREEN}Operation cancelled. Remote project was not deleted.${NC}"
+                return 0
+                ;;
+        esac
+
+        # Step 2: Final phrase confirmation
+        echo
+        echo -e "${RED}═══════════════════════════════════════════════════════════════${NC}"
+        echo -e "${RED}  ⚠⚠⚠  FINAL WARNING - REMOTE DELETE  ⚠⚠⚠${NC}"
+        echo -e "${RED}═══════════════════════════════════════════════════════════════${NC}"
+        echo
+        echo -e "${RED}This is your last chance to cancel before the remote project is deleted.${NC}"
+        echo
+        echo -e "${YELLOW}To proceed, type the exact phrase:${NC}"
+        echo -e "${YELLOW}  YES DELETE REMOTE REPO${NC}"
+        echo -e "${YELLOW}Any other input will abort the operation.${NC}"
+        read -r second_response
+
+        # Normalize response: uppercase and trim whitespace
+        local normalized_response
+        normalized_response=$(echo "$second_response" | tr '[:lower:]' '[:upper:]')
+        normalized_response="${normalized_response#"${normalized_response%%[![:space:]]*}"}"
+        normalized_response="${normalized_response%"${normalized_response##*[![:space:]]}"}"
+
+        if [ "$normalized_response" != "YES DELETE REMOTE REPO" ]; then
+            echo -e "${GREEN}Final phrase did not match. Remote deletion aborted for safety.${NC}"
+            return 0
+        fi
+    fi
+
+    # Delegate to safe GitLab deletion (single confirmation + URL tracking).
+    if ! delete_online_repo_safe_gitlab; then
+        # Safe delete already printed error details.
+        return 1
+    fi
+
+    # Attempt immediate permanent deletion using the scheduled-for-deletion project path.
+    if [ -z "$GITLAB_LAST_PROJECT_ID" ]; then
+        echo -e "${YELLOW}Skipping immediate deletion: project id not available for permanent removal call.${NC}"
+        return 0
+    fi
+
+    local scheduled_name="${REPO_NAME}-deletion_scheduled-${GITLAB_LAST_PROJECT_ID}"
+    local scheduled_full_path="${TARGET}/${scheduled_name}"
+
+    echo -e "${BLUE}Requesting immediate permanent removal of scheduled-deletion project '${scheduled_full_path}' (if allowed by GitLab instance settings)...${NC}"
+    echo -e "${BLUE}GitLab API endpoint:${NC} https://gitlab.com/api/v4/projects/${GITLAB_LAST_PROJECT_ID}?permanently_remove=true&full_path=${scheduled_full_path}"
+    if gitlab_api_request "DELETE" "/projects/${GITLAB_LAST_PROJECT_ID}?permanently_remove=true&full_path=${scheduled_full_path}"; then
+        # Double-check that the project is really gone by querying the same URL.
+        # A 404 response means the project no longer exists online.
+        gitlab_api_request "GET" "/projects/${GITLAB_LAST_PROJECT_ID}?permanently_remove=true&full_path=${scheduled_full_path}" || true
+        if [ "$GITLAB_API_LAST_STATUS" = "404" ]; then
+            echo -e "${GREEN}✓ Project '${REPO_NAME}' has been permanently deleted from GitLab.${NC}"
+        else
+            echo -e "${YELLOW}Project '${REPO_NAME}' might still be present according to a follow-up check (status: ${GITLAB_API_LAST_STATUS}).${NC}"
+        fi
+
+        # If a local repository marker exists, replace any existing deletion scheduled block
+        # with a simpler "Deletion completed" block for future reference.
+        local current_dir="$BASE_DIR"
+        if [ -d "$current_dir" ]; then
+            cd "$current_dir" 2>/dev/null || true
+            if [ -f ".repo_initiated_by_gitremoteforge" ] && [ -w ".repo_initiated_by_gitremoteforge" ]; then
+                local tmp_marker=".repo_initiated_by_gitremoteforge.tmp.$$"
+                awk '
+                    BEGIN {inside=0}
+                    /################### DELETION SCHEDULED START #####################/ {inside=1; next}
+                    /#################### DELETION SCHEDULED END ######################/ {inside=0; next}
+                    inside==0 {print}
+                ' .repo_initiated_by_gitremoteforge > "$tmp_marker" 2>/dev/null || rm -f "$tmp_marker"
+                if [ -s "$tmp_marker" ]; then
+                    mv "$tmp_marker" .repo_initiated_by_gitremoteforge 2>/dev/null || rm -f "$tmp_marker"
+                else
+                    rm -f "$tmp_marker"
+                fi
+
+                # Append the completion block with original remote URLs and deletion timestamp.
+                local domain="${GITLAB_DOMAIN:-gitlab.com}"
+                local deleted_at=""
+                if command -v date >/dev/null 2>&1; then
+                    deleted_at=$(date '+%Y-%m-%d %H:%M' 2>/dev/null || echo "")
+                fi
+                {
+                    echo "################### DELETION SCHEDULED START #####################"
+                    echo "# Deletion completed on remote GitLab on ${deleted_at}"
+                    echo "# ------ remote origin ssh url reminder"
+                    echo "remote_origin_original_ssh_url = git@${domain}:${TARGET}/${REPO_NAME}.git"
+                    echo "# ------ remote origin https url"
+                    echo "remote_origin_original_https_url = https://${domain}/${TARGET}/${REPO_NAME}"
+                    echo "# ------ Scheduled deletion date"
+                    echo "remote_origin_repo_deleted_at = ${deleted_at}"
+                    echo "#################### DELETION SCHEDULED END ######################"
+                } >> .repo_initiated_by_gitremoteforge 2>/dev/null || true
+            fi
+        fi
+
+        return 0
+    fi
+
+    echo -e "${YELLOW}Immediate deletion request was not accepted by the GitLab instance.${NC}"
+    if [ "$GITLAB_API_LAST_STATUS" = "400" ]; then
+        echo -e "${YELLOW}The instance likely has immediate deletion disabled or restricted.${NC}"
+        echo -e "${YELLOW}The project should remain in the scheduled-for-deletion state.${NC}"
+    elif [ -n "$GITLAB_API_LAST_STATUS" ]; then
+        echo -e "${YELLOW}GitLab API status:${NC} ${GITLAB_API_LAST_STATUS}"
+    fi
+    if [ -n "$GITLAB_API_LAST_BODY" ]; then
+        echo -e "${YELLOW}GitLab API response body:${NC}"
+        printf "%s\n" "$GITLAB_API_LAST_BODY"
+    fi
+
+    return 0
+}
+
 # Phase 2: Existing Repository Detection Functions
 
 # Detect if directory contains .git
@@ -815,6 +1201,73 @@ get_remote_url() {
     local path="$2"
     cd "$path"
     git remote get-url "$remote_name" 2>/dev/null
+}
+
+# Infer GitLab namespace (TARGET) and repository name (REPO_NAME) from the
+# current git remote URL when possible.
+# - Uses REMOTE_NAME if configured, otherwise falls back to 'origin'.
+# - Respects explicitly provided TARGET / REPO_NAME values and only fills in
+#   missing or placeholder values (e.g. REPO_NAME=".").
+infer_gitlab_project_from_remote() {
+    local old_pwd="$PWD"
+    cd "$BASE_DIR" 2>/dev/null || cd "$old_pwd"
+
+    if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        cd "$old_pwd"
+        return 1
+    fi
+
+    local remote_to_use="$REMOTE_NAME"
+    local origin_url
+
+    origin_url=$(git remote get-url "$remote_to_use" 2>/dev/null)
+    if [ -z "$origin_url" ]; then
+        origin_url=$(git remote get-url origin 2>/dev/null || echo "")
+    fi
+
+    if [ -z "$origin_url" ]; then
+        cd "$old_pwd"
+        return 1
+    fi
+
+    local path_part tmp
+    case "$origin_url" in
+        git@*:* )
+            # SSH form: git@gitlab.com:namespace/repo.git
+            path_part="${origin_url#*:}"
+            ;;
+        http://*|https://*|ssh://* )
+            # HTTP(S) or ssh:// form: protocol://host/namespace/repo.git
+            tmp="${origin_url#*://}"
+            path_part="${tmp#*/}"
+            ;;
+        * )
+            cd "$old_pwd"
+            return 1
+            ;;
+    esac
+
+    # Strip trailing .git if present
+    path_part="${path_part%.git}"
+
+    local repo_name namespace
+    repo_name="${path_part##*/}"
+    namespace="${path_part%/*}"
+
+    cd "$old_pwd"
+
+    if [ -z "$repo_name" ] || [ -z "$namespace" ]; then
+        return 1
+    fi
+
+    if [ -z "$TARGET" ]; then
+        TARGET="$namespace"
+    fi
+    if [ -z "$REPO_NAME" ] || [ "$REPO_NAME" = "." ]; then
+        REPO_NAME="$repo_name"
+    fi
+
+    return 0
 }
 
 # Prompt user when remote name exists but URL differs
@@ -1257,6 +1710,59 @@ main() {
         DIRECTORY_NAME=$(basename "$normalized_path")
     fi
     
+    # Normalize DIRECTORY_NAME when it refers to current directory (e.g. "-d .")
+    # so that REPO_NAME reflects the actual folder name instead of a literal ".".
+    if [ -z "$DIRECTORY_NAME" ] || [ "$DIRECTORY_NAME" = "." ]; then
+        local base_path
+        if [ -n "$DIRECTORY_PATH" ]; then
+            base_path=$(normalize_path "$DIRECTORY_PATH")
+        else
+            base_path="$BASE_DIR"
+        fi
+        DIRECTORY_NAME=$(basename "$base_path")
+    fi
+    
+    # Set repository name based on directory name (used both for creation and deletion flows)
+    REPO_NAME="$DIRECTORY_NAME"
+
+    if [ "$GET_PROJECT_ID_ONLY" = true ]; then
+        find_project_id_gitlab
+        exit 0
+    fi
+
+    # Early branch: remote deletion mode (-k / -K) – GitLab-only, remote-only, no local changes
+    if [ -n "$DELETE_ONLINE_REPO_MODE" ]; then
+        # If namespace or repository name is missing/placeholder, try to infer
+        # them from the current git remote before failing.
+        if [ -z "$TARGET" ] || [ -z "$REPO_NAME" ] || [ "$REPO_NAME" = "." ]; then
+            infer_gitlab_project_from_remote || true
+        fi
+
+        if [ -z "$TARGET" ] || [ -z "$REPO_NAME" ] || [ "$REPO_NAME" = "." ]; then
+            echo "Error: -k / -K requires a GitLab namespace and repository name."
+            echo "Provide -n <namespace> and -d/-p, or run inside a git repo with a configured remote."
+            exit 1
+        fi
+
+        # Setup provider (must be gitlab for deletion in this version)
+        setup_provider "$PROVIDER" "$TARGET" "$SELF_HOSTED_URL"
+
+        case "$PROVIDER" in
+            gitlab)
+                if [ "$DELETE_ONLINE_REPO_MODE" = "safe" ]; then
+                    delete_online_repo_safe
+                else
+                    delete_online_repo_force
+                fi
+                exit 0
+                ;;
+            *)
+                echo "Error: -k / -K remote deletion is currently implemented for GitLab provider only."
+                exit 1
+                ;;
+        esac
+    fi
+
     # Step 1: Manage local directory
     # Pass DIRECTORY_NAME (may be empty if only -p provided, but local_directory handles it)
     # This function handles: new directory creation, existing directory detection, path normalization
@@ -1278,7 +1784,7 @@ main() {
     # Get git user info
     contributor=$(get_git_user_info)
     
-    # Set repository name
+    # Update repository name after resolving full path
     REPO_NAME="$DIRECTORY_NAME"
 
     # Step 3: Setup provider with self-hosted URL if provided

@@ -2,6 +2,23 @@
 
 All notable changes to git-remote-forge are documented here.
 
+## [0.10.0] - 2026-02-06
+
+### Added
+
+- `-k` soft delete flow for GitLab remote repositories, including tracking of original and scheduled-deletion remote URLs in `.repo_initiated_by_gitremoteforge`
+- `-K` hard delete flow for GitLab, built on top of `-k` and issuing a best-effort immediate permanent deletion request using the GitLab Projects API
+- `-W` helper flag to resolve and print the current GitLab project ID from the configured git remote
+- `-F` flag to force remote delete confirmations for `-k` / `-K`, enabling non-interactive usage in CI/CD and automated tests
+- Dedicated test scripts `tests/test_delete_online_repo_gitlab_safe.sh` and `tests/test_delete_online_repo_gitlab_force.sh` for safe and hard delete scenarios
+
+### Changed
+
+- Refined `.repo_initiated_by_gitremoteforge` to record both scheduled and completed remote deletions for GitLab projects
+- Improved remote deletion messaging and safety checks, including a follow-up verification call for hard deletes
+
+---
+
 ## [0.9.8] - 2026-02-05
 
 ### Added

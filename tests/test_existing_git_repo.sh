@@ -1,5 +1,7 @@
 #!/bin/bash
 
+version="0.10.0"
+
 # Test scenario: create online repo from an existing git-initiated local directory.
 # Mirrors original Case03 behavior from tests.sh.
 

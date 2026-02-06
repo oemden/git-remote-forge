@@ -1,5 +1,7 @@
 #!/bin/bash
 
+version="0.10.0"
+
 # Test scenario: create online repo from a new non-existing local directory.
 # Mirrors original Case01 behavior from tests.sh.
 

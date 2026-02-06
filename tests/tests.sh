@@ -2,6 +2,8 @@
 # gitremoteforge_dev.sh
 # Orchestrator for git-remote-forge basic test scenarios.
 
+version="0.10.0"
+
 set -e
 set -x
 
@@ -20,7 +22,8 @@ Options:
   -2        Run Case02: existing non-git directory (test_existing_dir_nongit.sh)
   -3        Run Case03: existing git directory (test_existing_git_repo.sh)
   -4        Run Case04: destructive reset (test_destructive_reset.sh)
-  -a        Run all non-destructive tests (1, 2, 3)
+  -5        Run Case05: delete online GitLab repo (-k / -K) (test_delete_online_repo_gitlab.sh)
+  -a        Run all non-destructive tests (1, 2, 3, 5)
   -A        Run all tests including destructive (requires DESTRUCTIVE_TESTS=1)
   -h        Show this help message
 EOF
@@ -42,13 +45,17 @@ run_case4() {
     bash "${SCRIPT_DIR}/test_destructive_reset.sh"
 }
 
+run_case5() {
+    bash "${SCRIPT_DIR}/test_delete_online_repo_gitlab.sh"
+}
+
 parse_arguments() {
     if [[ $# -eq 0 ]]; then
         usage
         exit 0
     fi
 
-    while getopts "1234aAh" opt; do
+    while getopts "12345aAh" opt; do
         case ${opt} in
             1 )
                 echo "Running Case01 (new repo from new directory)"
@@ -66,11 +73,16 @@ parse_arguments() {
                 echo "Running Case04 (destructive reset)"
                 run_case4
                 ;;
+            5 )
+                echo "Running Case05 (delete online GitLab repo with -k / -K)"
+                run_case5
+                ;;
             a )
-                echo "Running all non-destructive tests (1, 2, 3)"
+                echo "Running all non-destructive tests (1, 2, 3, 5)"
                 run_case1
                 run_case2
                 run_case3
+                run_case5
                 ;;
             A )
                 echo "Running all tests including destructive (requires DESTRUCTIVE_TESTS=1)"
