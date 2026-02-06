@@ -1,35 +1,51 @@
 # TODO List
 
-- `-K` --keep          Keep existing files eg: README.md, .gitignore
-- Create a .repo_initiated_by_gitremoteforge ( with gitremote versionn, add to .gitignore if exist)
-- `-I`,                Specify what to add to .gitignore ? #TODO
-- `--version`                 Display git-remote-forge version
-- `-v`                 show git remote(s) in current dir `git remote -v` ( detect if `$PWD` is a git repo)
-- `-R`                 Replace remote ( same Name different provider or URL ) # ✅ COMPLETE (v0.9.5)
-- `-k`                 DELETE online Repo, Require user confirmation.
-- `-K`                 DELETE immediatly online repo ( eg: gitlab has a 2 step process, renaming the repo to something like ny_namespace/my_repo-deletion_scheduled-77729851 ) - check API if deletion can be done in 1 step. Require 2 times user confirmation with BIG WARNINGS.
+- [x] `-k` `--delete-online-repo`       DELETE online Repo, Require user confirmation. (GitLab implementation complete, v0.10.0)
+- [x] `-K` `--force-delete-online-repo` DELETE immediatly online repo (GitLab 2 step process: schedule + immediate delete) - REQUIRES 2 times user confirmation with BIG WARNINGS. (implemented v0.10.0)
+  - [x] when `-k` sucessful AND `-K` has not been called
+      ( eg: only -k is called  as -K calls -k function too ), adapt remote URL/path accordingly.
+    - [x] save current remote URL to `.repo_initiated_by_gitremoteforge`
+    - [x] save new URL ( scheduled for deletion ) in `.repo_initiated_by_gitremoteforge` with reminder date
+- [ ]      Always create a `.repo_initiated_by_gitremoteforge` ( with gitremote version, add to `.gitignore` if exist or create .gitignore exclusion even without -i arg)
+- [ ] `-N` Create New Namespace ( Gitlab ) - Requires `-V` ( `priv` `private` vs `pub` `public` ) - do not create a New User in GitHub !
+- [ ] `-V` Visibility - Private vs Public repo (on Gitlab - depends on namespace visibility - to check for Github and others ) defaults to Private `priv` `private`
+- [ ] `-E` --keep          Keep existing files eg: README.md, .gitignore\
+- [ ] `-I`,                Specify what to add to .gitignore ? #TODO
+- [ ] `--version`          Display git-remote-forge version
+- [ ] `-v`                 show git remote(s) in current dir `git remote -v` ( detect if `$PWD` is a git repo)
+- [ ] `-R`                 Replace remote ( same Name different provider or URL ) # ✅ COMPLETE (v0.9.5)
+- [ ]                      Download .gitignore templates from [https://github.com/github/gitignore]
 
 ## Parameter Strategy
 
 ```bash
--d, --dir          Project directory/name (required for new repo)
--c, --current      Project directory/name (required for new repo) from current Directory. ( no -d), same as -p
--n, --namespace    Namespace/username (target on provider)
--P, --provider     Provider: (gitlab|github|bitbucket|gitea) (default: gitlab) # ✅ COMPLETE (v0.9.7)
--S, --self-hosted  Self-hosted URL (optional, for self-hosted instances gitlab|gitea)
--t                 Auto-detect technologies (existing directory mode only)
--T, --tech         Technologies (user-provided, comma-separated, optional)
--b, --branch       Checkout branch after creation (default: develop)
--B, --branches       Add / Override  specific custom branches (other than develop|main|production) # TODO
--r, --remote-name  Set Remote Name ( default: origin ) # ✅ COMPLETE (v0.9.2)
--R, --replace-remote  Replace remote URL (prompts for confirmation) # ✅ COMPLETE (v0.9.5)
--i, --gitignore    Create basic std gitignore file ( default: .*env, !.env.example, .repo_init_by_gitremoteforge) #TODO
--I,                Specify what to add to .gitignore ? #TODO
--p, --path         Path to local directory (existing directory mode)
--f, --force        Skip preview and confirmation
--h, --help         Display help message
---dry              Dry Mode, eg: do not do anything, just show remote repo URL, remote name (origin), branches to create
+-d, --dir                    Project directory/name (required for new repo) # ✅ COMPLETE
+-c, --current                Project directory/name (required for new repo) from current Directory. ( no -d), same as -p # TODO
+-n, --namespace              Namespace/username (target on provider) # ✅ COMPLETE
+-P, --provider               Provider: (gitlab|github|bitbucket|gitea) (default: gitlab) # ✅ COMPLETE (v0.9.7)
+-S, --self-hosted            Self-hosted URL (optional, for self-hosted instances gitlab|gitea) # ✅ COMPLETE
+-t                           Auto-detect technologies (existing directory mode only) # ✅ COMPLETE
+-T, --tech                   Technologies (user-provided, comma-separated, optional) # ✅ COMPLETE
+-b, --branch                 Checkout branch after creation (default: develop) # ✅ COMPLETE
+-B, --branches               Add / Override  specific custom branches (other than develop|main|production) # TODO
+-r, --remote-name            Set Remote Name ( default: origin ) # ✅ COMPLETE (v0.9.2)
+-R, --replace-remote         Replace remote URL (prompts for confirmation) # ✅ COMPLETE (v0.9.5)
+-i, --gitignore              Create basic std gitignore file ( default: .*env, !.env.example, .repo_init_by_gitremoteforge) # ✅ COMPLETE (v0.9.4)
+-I,                          Specify what to add to .gitignore ? # TODO
+-p, --path                   Path to local directory (existing directory mode) # ✅ COMPLETE
+-f, --force                  Skip preview and confirmation # ✅ COMPLETE
+-F                           Force remote delete confirmations for -k / -K (non-interactive hard delete) # ✅ COMPLETE (v0.10.0)
+-k, --delete-online-repo     Soft delete remote repo on provider (GitLab implemented) # ✅ COMPLETE (v0.10.0)
+-K, --force-delete-online-repo  Hard delete remote repo on provider (GitLab implemented) # ✅ COMPLETE (v0.10.0)
+-W                           Resolve and print GitLab project id from current git remote # ✅ COMPLETE (v0.10.0)
+-h, --help                   Display help message # ✅ COMPLETE
+--dry                        Dry Mode, eg: do not do anything, just show remote repo URL, remote name (origin), branches to create # TODO
 ```
+
+### TESTS
+
+- [x] Split Tests.sh into smaller tests
+- [x] Create tests.cfg - Move hardcoded VALUES in script to tests.cfg
 
 ### Configuration
 
@@ -160,7 +176,7 @@
 
 - [ ] Implement GitHub provider (API-based repo creation)
 - [ ] Implement Bitbucket provider (optional for v1)
-- [ ] URL pattern detection per provider (git@gitlab.com: vs github.com)
+- [ ] URL pattern detection per provider (<git@gitlab.com>: vs github.com)
 
 ### Credential & Validation
 

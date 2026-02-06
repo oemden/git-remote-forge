@@ -4,7 +4,7 @@ A tool to create and setup git projects locally and push them remotely on GitLab
 
 ## Status
 
-**v0.9.7 - Ready for Use (GitLab Only)**
+**v0.10.0 - Ready for Use (GitLab Only)**
 
 git-remote-forge has reached a stable state suitable for production use.
 The core workflow is tested and reliable: create local repositories, initialize branches by default (main, develop, production) locally, then push to GitLab with a single command.
@@ -78,6 +78,7 @@ gitremote -d my-repo -n my_gitlab_namespace -r gitlab
 ```
 
 This will:
+
 - Create the repository as usual
 - Use `gitlab` as the remote name instead of `origin`
 - Remote URL: `git@gitlab.com:my_gitlab_namespace/my-repo.git`
@@ -91,6 +92,7 @@ gitremote -n my_gitlab_namespace -R origin
 ```
 
 This will:
+
 - Check if remote `origin` exists with different URL
 - Prompt: replace, keep, or abort
 - If replace: Update remote URL to new provider/namespace
@@ -263,9 +265,28 @@ gitremote -d my-project -n myusername -f
   - Requires double confirmations even when `-f` flag is used
   - Useful when you want to start fresh with an existing directory
 
+### Remote Deletion Options (GitLab Only)
+
+- `-k` : **Soft delete** the remote GitLab repository (schedule deletion).
+  - Requires a GitLab namespace and repository name:
+    - Use `-n` together with `-d` or `-p`, or
+    - Run inside a git repository with a configured remote so `git-remote-forge` can infer the namespace and name.
+  - Performs a single confirmation by asking you to type the repository name exactly (unless `-F` is used).
+  - Sends a standard delete request to GitLab, which marks the project as scheduled for deletion according to your instance policy.
+  - When deletion is scheduled, `git-remote-forge` records the original and scheduled-deletion remote URLs (SSH/HTTPS) and a reminder date in the `.repo_initiated_by_gitremoteforge` marker file.
+- `-K` : **Hard delete** the remote GitLab repository (best-effort immediate deletion).
+  - Runs the same soft-delete behavior as `-k`, then attempts an additional API call that requests an immediate permanent removal of the scheduled-for-deletion project.
+  - Requires two confirmations:
+    - First: type `yes` after a detailed warning.
+    - Second: type `YES DELETE REMOTE REPO` exactly (unless `-F` is used).
+  - On success, the `.repo_initiated_by_gitremoteforge` marker is updated to note that the remote repository was fully deleted and when.
+  - Immediate deletion support depends on your GitLab edition and admin settings (see `docs/repo_deletion.md` for details).
+  - **WARNING**: `-K` is a destructive operation that attempts to permanently remove the remote GitLab project. Use it only when you are absolutely certain the project can be safely deleted and preferably not on production projects.
+
 ### Other Options
 
 - `-f` : Force mode (skip preview and confirmation)
+- `-F` : Force remote delete confirmations for `-k` / `-K` (non-interactive remote deletion, intended for CI/CD and automated tests; extremely dangerous when combined with `-K`)
 - `-h` : Display help message
 
 ## Examples
@@ -325,11 +346,16 @@ gitremote -n myusername -p /path/to/existing/repo -O
 gitremote -d my-project -n myusername -i -O -f
 ```
 
+## Tests
+
+Some basic manual test scripts are available in the `tests/` directory.
+For details about the test scripts and the `tests.cfg` configuration file, see `tests/README.md`.
+
 ## What Gets Created
 
 ### Directory Structure
 
-```
+```bash
 my-project/
 ├── .git/
 ├── README.md
@@ -350,6 +376,7 @@ my-project/
 ### README.md
 
 Automatically created with:
+
 - Project name
 - Main contributor (from git config)
 - Technologies (if specified with `-T`)
@@ -359,11 +386,13 @@ Automatically created with:
 ### Remote Already Exists
 
 If a remote with the same name already exists, the script will:
+
 - Show the existing remote URL
 - Provide options to resolve the conflict
 - Exit safely without making changes
 
 **Solutions:**
+
 - Use `-r <different-name>` to specify a different remote name
 - Manually change/remove the remote: `git remote set-url origin <new-url>`
 - Remove the remote: `git remote remove origin`
@@ -371,6 +400,7 @@ If a remote with the same name already exists, the script will:
 ### Directory Already Exists
 
 If the directory already exists:
+
 - The script will use it (won't overwrite)
 - If it's a git repo, it will detect and handle accordingly
 - If it has files, they won't be deleted
